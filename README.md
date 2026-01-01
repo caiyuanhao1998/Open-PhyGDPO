@@ -4,7 +4,7 @@
 
 <p align="center"> <img src="img/logo.png" width="250px"> </p>
 
-[![arXiv](https://img.shields.io/badge/paper-arxiv-179bd3)]()
+[![arXiv](https://img.shields.io/badge/paper-arxiv-179bd3)](https://arxiv.org/abs/2512.24551)
 [![project](https://img.shields.io/badge/project-page-green)](https://caiyuanhao1998.github.io/project/PhyGDPO/)
 [![hf](https://img.shields.io/badge/hugging-face-green)](https://huggingface.co/datasets/CaiYuanhao/PhyGDPO_demo)
 <h3>PhyGDPO: Physics-Aware Groupwise Direct Preference <br> Optimization for Physically Consistent Text-to-Video Generation</h3> 
