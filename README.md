@@ -143,6 +143,6 @@ This is a re-implementation of our work "PhyGDPO: Physics-Aware Groupwise Direct
 
 
 ### News
-- **2026.01.04 :** Our paper is on [arxiv](https://arxiv.org/abs/2512.24551) now. 🚀
-- **2026.01.03 :** Our [project page](https://caiyuanhao1998.github.io/project/PhyGDPO/) has been built up. Feel free to check the video generation results on the project page.
+- **2025.12.31 :** Our paper is on [arxiv](https://arxiv.org/abs/2512.24551) now. 🚀
+- **2025.12.31 :** Our [project page](https://caiyuanhao1998.github.io/project/PhyGDPO/) has been built up. Feel free to check the video generation results on the project page.
 
