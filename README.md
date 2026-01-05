@@ -143,6 +143,19 @@ This is a re-implementation of our work "PhyGDPO: Physics-Aware Groupwise Direct
 
 
 ### News
-- **2025.12.31 :** Our paper is on [arxiv](https://arxiv.org/abs/2512.24551) now. 🚀
+- **2025.12.31 :** Our paper is on [arxiv](https://arxiv.org/abs/2512.24551) now. Code, data, and models will be made publicly available, stay tuned. 🚀 
 - **2025.12.31 :** Our [project page](https://caiyuanhao1998.github.io/project/PhyGDPO/) has been built up. Feel free to check the video generation results on the project page.
+
+
+
+## Citation
+If you find our repo useful, please consider citing our paper:
+```sh
+@article{cai2025phygdpo,
+  title={PhyGDPO: Physics-Aware Groupwise Direct Preference Optimization for Physically Consistent Text-to-Video Generation},
+  author={Cai, Yuanhao and Li, Kunpeng and Jia, Menglin and Wang, Jialiang and Sun, Junzhe and Liang, Feng and Chen, Weifeng and Juefei-Xu, Felix and Wang, Chu and Thabet, Ali and others},
+  journal={arXiv preprint arXiv:2512.24551},
+  year={2025}
+}
+```
 
