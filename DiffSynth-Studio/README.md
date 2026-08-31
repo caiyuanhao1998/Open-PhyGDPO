@@ -154,10 +154,9 @@ Then you will see the following comparison
 
 `Note:` The 1.3B tensor-parallel layout supports 1, 2, 4, or 8 visible GPUs;
 `--nproc_per_node` must equal the number of devices in `CUDA_VISIBLE_DEVICES`.
-Four 24 GB GPUs were sufficient in our reproducibility test. Six-way sharding is
-invalid because the 8960-wide FFN cannot be evenly partitioned. A full 50-step,
-832x480, 81-frame run took about 23 minutes on four RTX A5000 GPUs. The base
-checkpoint occupies about 17 GB on disk.
+Six-way sharding is invalid because the 8960-wide FFN cannot be evenly
+partitioned. For accurate and fast testing, we recommend using H100 GPUs for
+inference. The base checkpoint occupies about 17 GB on disk.
 
 &nbsp;
 
