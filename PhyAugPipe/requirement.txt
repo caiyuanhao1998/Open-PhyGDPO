@@ -1,0 +1,5 @@
+torch>=2.1.0
+transformers>=4.40.0
+vllm>=0.4.2
+tqdm>=4.66.0
+google-genai

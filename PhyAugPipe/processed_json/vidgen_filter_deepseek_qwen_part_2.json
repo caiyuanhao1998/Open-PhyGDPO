@@ -1,0 +1,785 @@
+[
+  {
+    "original": "The video shows a person fishing in a pond. The person is holding a fishing rod and is seen casting the line into the water. The pond is surrounded by trees and vegetation. The person then reels in the line and shows the fish that they caught. The fish is small and is held up for the camera to see. The person then releases the fish back into the water.",
+    "parse": {
+      "entities": [
+        "person (agent)",
+        "fishing rod (rigid)",
+        "line (flexible)",
+        "water (liquid)",
+        "pond (body of water)",
+        "trees (vegetation)",
+        "vegetation (natural)",
+        "fish (living organism)"
+      ],
+      "actions": [
+        "person casts line into water",
+        "person reels in line",
+        "person shows fish",
+        "person releases fish back into water"
+      ],
+      "forces": [
+        "gravity",
+        "tension in line",
+        "person's applied force"
+      ],
+      "outcomes": [
+        "line cast into water",
+        "fish caught",
+        "fish released"
+      ]
+    },
+    "reason": "The person casts the fishing line into the water, with gravity acting on the line and any caught fish. The tension in the line helps in catching the fish, and the person applies force to reel it in and release it back into the water.",
+    "extended": "The person casts the fishing line into the calm pond, where gravity acts on the line and any fish. The tension in the line aids in catching the fish, and the person applies force to reel it in. The sunlight reflects off the water, and the surrounding trees cast shadows. The person then releases the fish back into the water, completing the fishing cycle.",
+    "physics_related_score": 0.75,
+    "physics_label": 1,
+    "vid": "9PRo768yiJE-Scene-0037"
+  },
+  {
+    "original": "The video shows a large waterfall cascading down a cliff into a misty area below. The waterfall is surrounded by lush green vegetation. The water is white and frothy as it crashes down the cliff. The sky is overcast, and the overall color palette of the video is green and gray.",
+    "parse": {
+      "entities": [
+        "waterfall (liquid)",
+        "cliff (surface)",
+        "misty area (aerosol)",
+        "lush green vegetation (organic)",
+        "water (liquid)",
+        "sky (atmospheric)"
+      ],
+      "actions": [
+        "waterfall cascades down cliff",
+        "water crashes down cliff"
+      ],
+      "forces": [
+        "gravity",
+        "friction"
+      ],
+      "outcomes": [
+        "water becomes frothy",
+        "mist forms"
+      ]
+    },
+    "reason": "Gravity pulls the waterfall down the cliff, causing the water to crash and interact with the cliff face. Friction between the water and cliff leads to the water becoming frothy as it cascades, creating mist in the process.",
+    "extended": "The waterfall cascades down the cliff due to gravity, with the water crashing and interacting with the cliff face, causing it to become frothy and create mist in the process. The lush green vegetation frames the waterfall, and the overcast sky casts a soft, diffused light over the scene, enhancing the misty atmosphere.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "X4iEx2ezgrc-Scene-0469"
+  },
+  {
+    "original": "The video shows a rocket launching into the sky. The rocket is white with black stripes and has a large flame coming out of the bottom. The sky is clear and blue, and there are no clouds visible. The rocket is ascending quickly, and the flame is getting bigger as it gains altitude. The rocket is the only object in the video, and there are no other objects or people visible. The video is shot from a distance, and the rocket is the main focus of the shot.",
+    "parse": {
+      "entities": [
+        "rocket (white with black stripes)",
+        "flame",
+        "sky (clear and blue)",
+        "ground (launch site)"
+      ],
+      "actions": [
+        "rocket launching",
+        "rocket ascending quickly",
+        "flame getting bigger"
+      ],
+      "forces": [
+        "thrust",
+        "gravity",
+        "combustion"
+      ],
+      "outcomes": [
+        "rocket ascending",
+        "flame expanding"
+      ]
+    },
+    "reason": "The rocket's engines produce thrust, overcoming gravity, causing the rocket to ascend quickly. The flame expands as the rocket gains altitude due to increased combustion.",
+    "extended": "The rocket, white with black stripes, launches into the clear blue sky. Its engines produce thrust, overcoming gravity, causing it to ascend quickly. The flame expands as it gains altitude due to increased combustion, propelling the rocket higher. The shadow of the rocket is visible on the ground, and the launch site appears to be a flat, open area with some structures in the distance.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "DM7dqUE2P6U-Scene-0003"
+  },
+  {
+    "original": "The video shows a white boat with a black top speeding through the water, leaving a trail of white foam behind it. The boat is moving from the bottom of the frame towards the top, and the water is a deep blue color. The sky is clear and blue, and there is a landmass visible in the distance.",
+    "parse": {
+      "entities": [
+        "white boat with black top (rigid)",
+        "water (fluid)",
+        "trail of white foam (fluid)",
+        "sky (background)",
+        "landmass (background)"
+      ],
+      "actions": [
+        "boat speeds through water",
+        "boat leaves trail of foam",
+        "boat moves from bottom to top of frame"
+      ],
+      "forces": [
+        "thrust (propulsion)",
+        "drag (water resistance)",
+        "gravity"
+      ],
+      "outcomes": [
+        "trail of white foam",
+        "movement of boat",
+        "displacement of water"
+      ]
+    },
+    "reason": "The white boat with a black top is propelled through the water by its engine, creating thrust. As it moves, it displaces water, resulting in a trail of white foam. The boat's movement from the bottom to the top of the frame is driven by the engine's power overcoming water resistance and gravity.",
+    "extended": "The white boat with a black top speeds through the deep blue water, leaving a trail of white foam as it moves from the bottom to the top of the frame. The engine's thrust propels the boat forward, overcoming water resistance and gravity. The clear blue sky and distant landmass frame the scene, highlighting the boat's dynamic motion and the water's displacement.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "1bnkXt9MpGs-Scene-0144"
+  },
+  {
+    "original": "The video shows a man surfing on a large wave in the ocean. He is wearing a white shirt and black shorts. The wave is very tall and the man is riding it skillfully, moving back and forth on the surfboard. The water is a deep blue color and the sky is clear. The man appears to be alone in the water, with no other surfers or objects visible.",
+    "parse": {
+      "entities": [
+        "man (agent)",
+        "surfboard (rigid)",
+        "wave (water)",
+        "water (fluid)"
+      ],
+      "actions": [
+        "man surfing on wave",
+        "man moving back and forth on surfboard"
+      ],
+      "forces": [
+        "gravity",
+        "buoyancy",
+        "friction"
+      ],
+      "outcomes": [
+        "man riding wave skillfully",
+        "man maintaining balance"
+      ]
+    },
+    "reason": "The man is pulled down the wave by gravity, while buoyancy from the water supports the surfboard. Friction between the man and the surfboard allows him to control his movements, resulting in a skillful ride.",
+    "extended": "The man, wearing a white shirt and black shorts, skillfully rides a tall wave. Gravity pulls him down the wave, while buoyancy keeps the surfboard afloat. Friction between the man and the surfboard enables precise control. The deep blue water and clear sky frame the dynamic scene as the man maintains balance, moving back and forth on the surfboard.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "419DG1Bz0TQ-Scene-0040"
+  },
+  {
+    "original": "The video shows a first-person view of a person riding a bike on a wooden trail in a forest. The trail is surrounded by tall trees and the ground is covered with leaves and dirt. The rider maneuvers through the trail, passing by wooden ramps and turns. The sunlight filters through the trees, casting shadows on the trail. The rider's bike can be heard in the background, and the sound of the wheels on the wooden planks is audible. The video captures the thrill of biking in a natural setting.",
+    "parse": {
+      "entities": [
+        "person (rider)",
+        "bike (vehicle)",
+        "wooden trail (surface)",
+        "trees",
+        "leaves",
+        "dirt",
+        "wooden ramps",
+        "sunlight"
+      ],
+      "actions": [
+        "person rides bike",
+        "bike moves along trail",
+        "rider maneuvers",
+        "sunlight casts shadows",
+        "bike sounds"
+      ],
+      "forces": [
+        "gravity",
+        "friction",
+        "normal force"
+      ],
+      "outcomes": [
+        "bike moves forward",
+        "shadows cast",
+        "sound of wheels"
+      ]
+    },
+    "reason": "Gravity pulls the bike downward, while friction between the tires and the wooden trail provides the necessary control for maneuvering. The normal force from the trail keeps the bike moving forward as the rider navigates through the turns and ramps. The interaction of these forces results in the bike's movement and the sound of the wheels on the planks.",
+    "extended": "The person rides the bike on the wooden trail, with gravity pulling the bike downward. Friction between the tires and trail enables maneuvering through ramps and turns, while the normal force from the trail surface keeps the bike moving forward. Sunlight filters through trees, casting shadows on the trail as the bike moves, creating the sound of wheels on wooden planks. The trail's dirt and leaves add texture to the path, enhancing the natural setting.",
+    "physics_related_score": 0.78,
+    "physics_label": 1,
+    "vid": "Idvkw4ev8QA-Scene-0057"
+  },
+  {
+    "original": "The video shows a close-up of a piece of wood with a hole in it. A person is seen holding a piece of metal with a threaded hole in the center. The person then places the metal piece on top of the hole in the wood and uses a pencil to mark around the edges of the metal piece. The person then uses a tool to cut along the marked lines, creating a square metal piece with four holes around the edges. The person then places the metal piece on top of the hole in the wood and uses a tool to secure it in place.",
+    "parse": {
+      "entities": [
+        "wood (with hole)",
+        "metal piece (with threaded hole)",
+        "pencil",
+        "tool",
+        "person (agent)"
+      ],
+      "actions": [
+        "person places metal on wood",
+        "person marks with pencil",
+        "person cuts metal",
+        "person secures metal"
+      ],
+      "forces": [
+        "mechanical force (pencil marking)",
+        "mechanical force (tool cutting)",
+        "friction (tool interaction)"
+      ],
+      "outcomes": [
+        "marked lines",
+        "square metal piece",
+        "secured metal"
+      ]
+    },
+    "reason": "The person applies mechanical force with the pencil to mark the metal, then uses a cutting tool with friction to create a square metal piece. The metal is secured in the wood hole, ensuring a tight fit.",
+    "extended": "The person carefully aligns the metal on the wood, using a pencil to mark precise lines. The tool cuts along these lines with mechanical force, creating a square metal piece. The metal is then secured in the wood hole, with visible friction aiding the process, ensuring a snug fit.",
+    "physics_related_score": 0.75,
+    "physics_label": 1,
+    "vid": "G0M97sNocco-Scene-0009"
+  },
+  {
+    "original": "The video shows a woman surfing on a white surfboard in the ocean. She is wearing a black bikini and has long black hair. The water is a clear blue color, and there are several other people in the water around her. The woman is riding a small wave, and she appears to be enjoying herself as she balances on the board. The video captures the excitement and beauty of surfing in the ocean.",
+    "parse": {
+      "entities": [
+        "woman (agent)",
+        "surfboard (buoyant)",
+        "ocean (fluid)",
+        "wave (fluid motion)"
+      ],
+      "actions": [
+        "woman surfing on surfboard",
+        "woman riding wave",
+        "woman balancing on board"
+      ],
+      "forces": [
+        "buoyancy",
+        "gravity",
+        "friction"
+      ],
+      "outcomes": [
+        "woman balances on board",
+        "wave moves toward shore"
+      ]
+    },
+    "reason": "The woman's weight is supported by the buoyancy of the surfboard in the ocean. Gravity drives the wave forward, allowing her to ride it. Her balancing maintains equilibrium on the moving wave.",
+    "extended": "The woman, with long black hair and in a black bikini, skillfully rides a small wave on her white surfboard. Supported by the surfboard's buoyancy, she maintains balance against gravity and friction. The clear blue ocean and surrounding surfers add to the vibrant scene as the wave propels her forward.",
+    "physics_related_score": 0.78,
+    "physics_label": 1,
+    "vid": "bB53YbNw8Dc-Scene-0181"
+  },
+  {
+    "original": "The video shows a rocket launching into the sky. The rocket is white and has a flame coming out of the bottom. There is a lot of smoke coming out of the bottom of the rocket. The sky is blue with some clouds.",
+    "parse": {
+      "entities": [
+        "rocket (vehicle)",
+        "flame (combustion)",
+        "smoke (gas)",
+        "sky (atmosphere)",
+        "clouds (weather)"
+      ],
+      "actions": [
+        "rocket launching",
+        "flame coming out",
+        "smoke coming out"
+      ],
+      "forces": [
+        "thrust",
+        "gravity",
+        "air resistance"
+      ],
+      "outcomes": [
+        "rocket ascending",
+        "smoke emission",
+        "flame presence"
+      ]
+    },
+    "reason": "The rocket is propelled upward by thrust from its engines, overcoming gravity and air resistance. The combustion produces flame and smoke, expelled downward as the rocket ascends.",
+    "extended": "The white rocket launches into the blue sky, propelled by thrust from its engines. Bright flames and thick smoke are expelled downward, creating a stark contrast against the sky. The rocket ascends steadily, defying gravity and air resistance.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "nq1kRujWaoA-Scene-0096"
+  },
+  {
+    "original": "The video shows a close-up of a blue bowl filled with water. The bowl is being tilted, causing the water to flow out onto the ground. The ground is covered with brown leaves and green grass. The water flows out in a steady stream, creating a small puddle on the ground. The bowl is held at an angle, and the water continues to flow out until the bowl is empty.",
+    "parse": {
+      "entities": [
+        "bowl (rigid)",
+        "water (liquid)",
+        "ground (surface)",
+        "brown leaves (deformable)",
+        "green grass (surface)",
+        "puddle (liquid)"
+      ],
+      "actions": [
+        "bowl is tilted",
+        "water flows out",
+        "water creates puddle"
+      ],
+      "forces": [
+        "gravity",
+        "friction",
+        "surface tension"
+      ],
+      "outcomes": [
+        "water flows",
+        "puddle forms"
+      ]
+    },
+    "reason": "Gravity causes the water to flow out of the tilted bowl. Friction between the water and bowl slows the flow, while surface tension maintains the water's cohesion. The water forms a puddle on the ground due to gravity and surface interaction.",
+    "extended": "The blue bowl, filled with water, is tilted at an angle, allowing gravity to pull the water out in a steady stream. The water interacts with the bowl and ground, where friction and surface tension influence its flow, forming a small puddle on the ground covered with brown leaves and green grass. The sunlight highlights the water's texture as it flows.",
+    "physics_related_score": 0.78,
+    "physics_label": 1,
+    "vid": "Il34TEeiHn8-Scene-0083"
+  },
+  {
+    "original": "The video shows a close-up of a boat's bow with a green net attached to it. The net is being pulled through the water, causing ripples and waves. The boat appears to be moving at a steady pace, and the net is being pulled by a person on the boat. The water is a murky green color, and there are no other objects or people visible in the video.",
+    "parse": {
+      "entities": [
+        "boat (vessel)",
+        "green net (flexible)",
+        "water (liquid)",
+        "person (agent)"
+      ],
+      "actions": [
+        "net is pulled through water",
+        "boat moves steadily",
+        "person pulls net"
+      ],
+      "forces": [
+        "pulling force (person)",
+        "drag (water resistance)",
+        "propulsion (boat)"
+      ],
+      "outcomes": [
+        "ripples",
+        "waves"
+      ]
+    },
+    "reason": "The person on the boat pulls the green net through the water with a pulling force, causing ripples and waves. The boat's steady movement contributes to the net's motion through the water, while drag from the water resists this movement.",
+    "extended": "The person pulls the green net through the murky green water, creating ripples and waves as the boat moves steadily. The net's interaction with the water generates visible disturbances on the surface, and the person's hand is visible gripping the net's edge.",
+    "physics_related_score": 0.75,
+    "physics_label": 1,
+    "vid": "C44tE6R1zno-Scene-0034"
+  },
+  {
+    "original": "The video shows a rocket launching into the sky. The rocket is white and orange, and it has a large flame coming out of the bottom. The sky is clear and blue, and there are no clouds visible. The rocket is launching from a launchpad, and there are several buildings and structures visible in the background. The rocket is moving upwards, and the flame is getting bigger and bigger as it gains altitude.",
+    "parse": {
+      "entities": [
+        "rocket (vehicle)",
+        "launchpad (surface)",
+        "buildings (structures)",
+        "flame (combustion)",
+        "sky (background)"
+      ],
+      "actions": [
+        "rocket launching",
+        "rocket moving upward",
+        "flame expanding"
+      ],
+      "forces": [
+        "thrust (engine)",
+        "gravity",
+        "aerodynamic drag"
+      ],
+      "outcomes": [
+        "rocket ascending",
+        "flame enlarging",
+        "rocket gaining speed"
+      ]
+    },
+    "reason": "The rocket's engine generates thrust, propelling it upward against gravity and aerodynamic drag. As the rocket ascends, the flame enlarges due to increased fuel combustion, and the rocket gains speed.",
+    "extended": "The white and orange rocket, powered by its engine's thrust, ascends into the clear blue sky, overcoming gravity and aerodynamic drag. The bright flame at its base grows larger as it gains altitude, and the rocket's speed increases. The launchpad and surrounding buildings are visible in the background, emphasizing the rocket's upward motion.",
+    "physics_related_score": 0.92,
+    "physics_label": 1,
+    "vid": "feplKyucGkU-Scene-0002"
+  },
+  {
+    "original": "The video shows a person running down a snowy hill with a parachute attached to their back. The person is wearing a black jacket and pants. The parachute is blue and white and is fully inflated as the person runs. The background shows a beautiful mountain range with snow-capped peaks and a lake in the distance. The person runs down the hill and takes off into the air, soaring above the landscape.",
+    "parse": {
+      "entities": [
+        "person (agent)",
+        "parachute (inflated)",
+        "hill (snowy)",
+        "jacket (black)",
+        "pants (black)",
+        "mountain range (snow-capped)",
+        "lake",
+        "air (medium)"
+      ],
+      "actions": [
+        "person runs down hill",
+        "parachute inflates",
+        "person takes off into air"
+      ],
+      "forces": [
+        "gravity",
+        "air resistance",
+        "lift"
+      ],
+      "outcomes": [
+        "person accelerates downhill",
+        "parachute inflates fully",
+        "person soars above landscape"
+      ]
+    },
+    "reason": "Gravity pulls the person downhill, accelerating their descent. Air resistance inflates the parachute, creating lift that counteracts gravity and allows the person to take off and soar.",
+    "extended": "The person, dressed in a black jacket and pants, runs down the snowy hill as gravity accelerates their descent. The blue and white parachute inflates due to air resistance, generating lift. The person takes off into the air, soaring above the picturesque landscape with snow-capped mountains and a distant lake under a clear blue sky.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "O-v4lou8nxg-Scene-0015"
+  },
+  {
+    "original": "The video shows a rocket launching into space. The rocket is white and orange, and it has a blue flame coming out of the bottom. The background is a view of the Earth from space, with the blue sky and stars visible. The rocket is shown from different angles as it ascends.",
+    "parse": {
+      "entities": [
+        "rocket (vehicle)",
+        "flame (combustion)",
+        "Earth (celestial body)",
+        "sky",
+        "stars"
+      ],
+      "actions": [
+        "rocket launching",
+        "flame emitting",
+        "rocket ascending"
+      ],
+      "forces": [
+        "thrust",
+        "gravity",
+        "combustion"
+      ],
+      "outcomes": [
+        "rocket ascends",
+        "flame emission",
+        "overcoming gravity"
+      ]
+    },
+    "reason": "The rocket is propelled upward by thrust from its engines, overcoming gravity. Combustion creates the high-velocity exhaust, generating thrust that allows the rocket to ascend into space.",
+    "extended": "The white and orange rocket launches into space, its engines emitting a bright blue flame. Thrust from combustion overcomes gravity, propelling the rocket upward. The Earth's curvature and starry sky are visible in the background, highlighting the ascent.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "dmhSov4m1MI-Scene-0035"
+  },
+  {
+    "original": "The video features a man in a black wetsuit paddleboarding on the ocean. He is standing on a white paddleboard and holding a black paddle. The man is seen paddling through the waves, maintaining his balance as the water splashes around him. The ocean is a deep blue color, and the sky is clear and blue. The man appears to be skilled at paddleboarding, as he maneuvers through the waves with ease.",
+    "parse": {
+      "entities": [
+        "man (agent)",
+        "paddleboard (buoyant)",
+        "paddle (rigid)",
+        "ocean (fluid)"
+      ],
+      "actions": [
+        "man paddles",
+        "man maintains balance",
+        "water splashes"
+      ],
+      "forces": [
+        "buoyancy",
+        "friction",
+        "muscle force"
+      ],
+      "outcomes": [
+        "staying afloat",
+        "moving through water"
+      ]
+    },
+    "reason": "The man uses the paddle to apply force against the water, which, combined with the buoyancy of the paddleboard, allows him to stay afloat and move through the ocean. Friction between the paddle and water aids in propulsion.",
+    "extended": "The man, clad in a black wetsuit, skillfully paddles through the deep blue ocean, using the buoyancy of the white paddleboard to stay afloat. His black paddle slices through the water, creating splashes as he maintains balance. The clear blue sky enhances the serene yet dynamic scene, highlighting his muscle force and control over the paddleboard.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "6vDsRX9Bz34-Scene-0065"
+  },
+  {
+    "original": "The video shows a sailboat sailing on the water. The camera pans up to show the sail, which is white and billowing in the wind. The sky is clear and blue, and the water is calm. The sailboat appears to be moving at a steady pace, and the sail is fully extended, catching the wind. There are no other boats or land in sight, suggesting that the sailboat is out in the open water. The sailboat itself is white, with a sleek design and a pointed bow. The sail is attached to a tall mast that rises up from the deck of the boat. The video does not show any people on the sailboat, but it is clear that someone is managing the sail and steering the boat. The video ends with the camera panning back down to show the deck of the sailboat.",
+    "parse": {
+      "entities": [
+        "sailboat (floating)",
+        "sail (flexible)",
+        "mast (rigid)",
+        "deck (surface)",
+        "water (liquid)",
+        "wind (air)",
+        "sky (background)"
+      ],
+      "actions": [
+        "sailboat sails on water",
+        "camera pans up to sail",
+        "sail billows in wind",
+        "sailboat moves at steady pace",
+        "sail catches wind",
+        "camera pans back down to deck"
+      ],
+      "forces": [
+        "wind force",
+        "hydrodynamic force",
+        "gravity"
+      ],
+      "outcomes": [
+        "sailboat moves forward",
+        "sail remains billowed",
+        "sailboat stays upright",
+        "camera captures sail details"
+      ]
+    },
+    "reason": "The wind exerts force on the sail, propelling the sailboat forward through the water. The sail's shape and angle maximize the capture of wind energy, while the hull of the sailboat interacts with the water to maintain steady movement. The mast and deck provide structural support for the sail and control the boat's direction.",
+    "extended": "The sailboat moves steadily as the wind pushes against its billowing sail, transferring energy through the mast and deck to propel it through the water. The sail's angle captures the wind force effectively, maintaining the boat's upright position and forward motion. The clear blue sky and calm water enhance the serene sailing experience, with the sleek white hull cutting through the water smoothly.",
+    "physics_related_score": 0.78,
+    "physics_label": 1,
+    "vid": "05Zrxcp1xUc-Scene-0076"
+  },
+  {
+    "original": "The video shows a person wearing a green jacket and gloves, kneeling on the ground and using a shovel to dig a hole in the grass. The person then uses their hands to remove the dirt from the hole.",
+    "parse": {
+      "entities": [
+        "person (agent)",
+        "shovel (tool)",
+        "grass (surface)",
+        "dirt (material)",
+        "hole (result)",
+        "gloves (accessory)",
+        "jacket (clothing)",
+        "ground (surface)"
+      ],
+      "actions": [
+        "person is kneeling",
+        "person uses shovel to dig",
+        "person removes dirt with hands"
+      ],
+      "forces": [
+        "mechanical force (shovel digging)",
+        "friction (shovel and dirt)",
+        "gravity (dirt falling)"
+      ],
+      "outcomes": [
+        "hole dug",
+        "dirt removed"
+      ]
+    },
+    "reason": "The person applies mechanical force with the shovel to dig into the ground. The shovel displaces dirt due to friction and gravity, creating a hole. The person then manually removes the dirt, working against gravity.",
+    "extended": "The person, wearing a green jacket and gloves, kneels on the grassy ground and uses a shovel to apply mechanical force, digging a hole. The shovel displaces dirt through friction and gravity. The person then manually removes the dirt, working against gravity, with visible grass and a white house in the background.",
+    "physics_related_score": 0.75,
+    "physics_label": 1,
+    "vid": "7LpjOvqEqCA-Scene-0008"
+  },
+  {
+    "original": "The video shows a man surfing on a large wave in the ocean. He is wearing a blue shirt and is riding a white surfboard. The wave is very large and powerful, and the man is seen skillfully maneuvering his surfboard to stay on top of it. The water is a deep blue color, and the sky is clear. The man appears to be alone in the water, with no other surfers or objects visible in the video.",
+    "parse": {
+      "entities": [
+        "man (agent)",
+        "surfboard (rigid)",
+        "wave (water)",
+        "water (fluid)"
+      ],
+      "actions": [
+        "man surfing on wave",
+        "man maneuvering surfboard",
+        "wave moving"
+      ],
+      "forces": [
+        "gravity",
+        "buoyancy",
+        "friction"
+      ],
+      "outcomes": [
+        "man stays on surfboard",
+        "wave breaks"
+      ]
+    },
+    "reason": "The man skillfully maneuvers the surfboard as gravity pulls the wave downward, creating a powerful motion. Buoyancy keeps the surfboard afloat on the water, while friction between the board and water aids in control, allowing the man to stay on top as the wave breaks.",
+    "extended": "The man, wearing a blue shirt, skillfully maneuvers his white surfboard as gravity pulls the powerful wave downward. Buoyancy keeps the surfboard afloat on the deep blue water, while friction between the board and water aids in control, allowing the man to stay on top as the wave breaks. The spray from the wave adds a dynamic visual element, highlighting the force of the water.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "qMiekgibWC0-Scene-0017"
+  },
+  {
+    "original": "The video shows a man surfing on a surfboard in the ocean. He is seen riding the waves, and at one point, he falls off the surfboard into the water. The video captures the man's movements as he navigates the waves and the moment he loses his balance and falls. The ocean is a deep blue color, and the waves are white and frothy. The man is wearing a black wetsuit and is the only person visible in the video.",
+    "parse": {
+      "entities": [
+        "man (agent)",
+        "surfboard (buoyant)",
+        "ocean (fluid)",
+        "waves (dynamic)"
+      ],
+      "actions": [
+        "man surfing on surfboard",
+        "man riding waves",
+        "man falls off surfboard",
+        "man losing balance"
+      ],
+      "forces": [
+        "buoyancy",
+        "gravity",
+        "wave impact"
+      ],
+      "outcomes": [
+        "man stays afloat",
+        "man falls into water",
+        "man submerged in water"
+      ]
+    },
+    "reason": "The man uses the surfboard's buoyancy to stay afloat. Gravity pulls him downward, but he maintains balance until a wave impacts, causing him to lose balance and fall into the water.",
+    "extended": "The man, clad in a black wetsuit, rides the waves on his surfboard, buoyancy keeping him afloat. As a white and frothy wave impacts, he loses balance due to the force of the wave and falls into the deep blue ocean, momentarily submerged.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "jdD5gjTspnY-Scene-0046"
+  },
+  {
+    "original": "The video shows a man working on a wooden project in a workshop. He is seen using a hammer and a ruler to measure and adjust the wooden pieces. The man is wearing a gray hoodie and a baseball cap. The workshop is cluttered with various tools and wood pieces. The wooden project appears to be a crate or a basket.",
+    "parse": {
+      "entities": [
+        "man (agent)",
+        "hammer (tool)",
+        "ruler (tool)",
+        "wooden pieces (material)",
+        "workshop (location)",
+        "crate or basket (object)"
+      ],
+      "actions": [
+        "man uses hammer",
+        "man uses ruler",
+        "man measures wooden pieces",
+        "man adjusts wooden pieces"
+      ],
+      "forces": [
+        "mechanical force (hammer)",
+        "gravity"
+      ],
+      "outcomes": [
+        "wooden pieces shaped",
+        "crate or basket assembled"
+      ]
+    },
+    "reason": "The man applies mechanical force with the hammer to shape wooden pieces, while gravity keeps the pieces in place. The ruler ensures precise measurements, leading to the assembly of the crate or basket.",
+    "extended": "In the workshop, the man, wearing a gray hoodie, uses a hammer to apply mechanical force, shaping wooden pieces. The ruler ensures precise measurements under gravity's influence, assembling a crate or basket. The cluttered workshop, with various tools and wood pieces, highlights the detailed craftsmanship.",
+    "physics_related_score": 0.75,
+    "physics_label": 1,
+    "vid": "EgWaTtxB09U-Scene-0043"
+  },
+  {
+    "original": "The video shows a woman surfing on a wave in the ocean. She is wearing a red shirt and black wetsuit. The surfboard is white with black and red designs. The woman is seen riding the wave, but eventually falls off the surfboard and into the water. The ocean is a deep blue color, and the waves are white and foamy. The sky is clear and blue.",
+    "parse": {
+      "entities": [
+        "woman (agent)",
+        "surfboard (buoyant)",
+        "wave (water)",
+        "ocean (water)"
+      ],
+      "actions": [
+        "woman surfing on wave",
+        "woman falls off surfboard",
+        "wave moving"
+      ],
+      "forces": [
+        "gravity",
+        "buoyancy",
+        "wave energy"
+      ],
+      "outcomes": [
+        "woman falls into water",
+        "wave continues moving forward"
+      ]
+    },
+    "reason": "The woman is pulled downward by gravity, causing her to lose balance and fall off the surfboard into the ocean. Buoyancy supports her as she resurfaces, while wave energy propels the wave forward.",
+    "extended": "The woman, in a red shirt and black wetsuit, rides a white surfboard with black and red designs on a deep blue ocean wave. Gravity causes her to lose balance and fall into the buoyant water, while the foamy wave continues moving forward under wave energy. The clear blue sky adds to the scene's vividness.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "C_FfO9vqNLQ-Scene-0065"
+  },
+  {
+    "original": "The video starts with a person surfing on a wave in the ocean. The surfer is wearing a black wetsuit and is riding a white surfboard. The wave is large and greenish-blue in color, and the surfer is seen riding it skillfully. The camera then cuts to another person surfing on a smaller wave, wearing a red wetsuit and riding a red surfboard. The waves are crashing against the shore, and the water is a deep blue color. The video ends with a view of the ocean and the shore, with rocks and a pier visible in the background.",
+    "parse": {
+      "entities": [
+        "person (surfer 1)",
+        "surfboard (white)",
+        "wave (large, greenish-blue)",
+        "person (surfer 2)",
+        "wetsuit (black)",
+        "wetsuit (red)",
+        "surfboard (red)",
+        "water",
+        "shore",
+        "rocks",
+        "pier"
+      ],
+      "actions": [
+        "person surfing on wave",
+        "riding surfboard",
+        "waves crashing against shore"
+      ],
+      "forces": [
+        "buoyancy",
+        "wave energy",
+        "gravity"
+      ],
+      "outcomes": [
+        "surfer stays afloat",
+        "wave breaks on shore"
+      ]
+    },
+    "reason": "The surfers are supported by the buoyancy of the water, allowing them to ride the waves. The wave energy propels them forward, while gravity pulls the waves toward the shore, causing them to break.",
+    "extended": "The surfers, clad in black and red wetsuits, skillfully ride their respective white and red surfboards on large greenish-blue waves. Buoyancy keeps them afloat as wave energy propels them forward. Gravity causes the waves to break and crash against the deep blue water and shore. The scene concludes with a serene view of the ocean, rocks, and a distant pier under bright sunlight.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "3Y4HNjx0Ozs-Scene-0007"
+  },
+  {
+    "original": "The video shows a large whale swimming in the ocean. The whale's body is mostly submerged, with only its back and dorsal fin visible above the water's surface. The ocean is calm, and the sky is overcast. The whale moves slowly and gracefully through the water, creating gentle ripples and waves as it goes. The whale's skin appears smooth and sleek, and its color is a dark shade of gray. The video captures the majestic beauty of this magnificent creature in its natural habitat.",
+    "parse": {
+      "entities": [
+        "whale (large, aquatic)",
+        "ocean (body of water)",
+        "water's surface",
+        "back",
+        "dorsal fin",
+        "ripples",
+        "waves",
+        "skin (smooth, sleek)"
+      ],
+      "actions": [
+        "whale swims",
+        "body is mostly submerged",
+        "whale moves slowly",
+        "creating gentle ripples and waves"
+      ],
+      "forces": [
+        "buoyancy",
+        "propulsion (from tail movement)",
+        "gravity",
+        "water resistance"
+      ],
+      "outcomes": [
+        "gentle ripples",
+        "waves",
+        "slow and graceful movement"
+      ]
+    },
+    "reason": "The whale's buoyancy allows it to float in the ocean, while its tail provides propulsion to move through the water. Gravity keeps most of its body submerged, and water resistance creates ripples and waves as it moves slowly and gracefully.",
+    "extended": "The whale swims through the ocean, buoyancy keeping it afloat as its tail propels it forward. Gravity maintains its submerged state, and water resistance generates gentle ripples and waves as it moves gracefully. The whale's smooth, sleek skin glides through the calm water, creating a majestic scene.",
+    "physics_related_score": 0.8,
+    "physics_label": 1,
+    "vid": "NTQkxkDNEJU-Scene-0382"
+  },
+  {
+    "original": "The video shows a person using a saw to cut a wooden lattice. The person is holding the saw with one hand and using the other hand to guide it along the lattice. The lattice is made up of several wooden sticks that intersect at various angles, creating a geometric pattern. The person is cutting through one of the sticks, and as they saw back and forth, small pieces of wood are falling away. The background is blurred, but it appears to be a workshop or a crafting area. The person's hands are steady, and they seem to be experienced in using the saw. The lighting in the video is bright, and the colors are natural and muted, with the brown of the wood contrasting against the person's skin.",
+    "parse": {
+      "entities": [
+        "person (agent)",
+        "saw (tool)",
+        "wooden lattice (structure)",
+        "wooden sticks (material)",
+        "workshop (location)"
+      ],
+      "actions": [
+        "person holds saw",
+        "person guides saw along lattice",
+        "person cuts through stick",
+        "sawing back and forth",
+        "small pieces of wood falling away"
+      ],
+      "forces": [
+        "mechanical force (sawing)",
+        "friction (between saw and wood)",
+        "gravity (on falling wood pieces)"
+      ],
+      "outcomes": [
+        "wooden stick being cut",
+        "small pieces of wood falling away"
+      ]
+    },
+    "reason": "The person applies mechanical force with the saw, causing the wooden stick to be cut. Friction between the saw and wood generates heat and removes wood particles. Gravity pulls the small wood pieces downward as they fall away.",
+    "extended": "The person, with steady hands, uses the saw to apply mechanical force, cutting through the wooden stick. Friction from the sawing action removes wood particles, and gravity causes the small pieces to fall away as the person saws back and forth. The bright lighting highlights the natural brown tones of the wood and the person's skin, emphasizing the precision of the cut in the geometric lattice pattern.",
+    "physics_related_score": 0.85,
+    "physics_label": 1,
+    "vid": "Gkedzw4L2cc-Scene-0106"
+  }
+]

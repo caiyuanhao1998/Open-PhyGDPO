@@ -1,0 +1,4 @@
+rm eval_results_all
+rm videocon_physics
+rm videophy_2_auto
+rm DPO_Data
