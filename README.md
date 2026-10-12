@@ -14,7 +14,7 @@
 <h3>PhyGDPO: Physics-Aware Groupwise Direct Preference <br> Optimization for Physically Consistent Text-to-Video Generation</h3> 
 
 <p style="font-size: 8px;">
-  Applied to the post-training of
+  Applied in the post-training of
   <img src="https://cdn.simpleicons.org/meta/0866FF" height="12" style="vertical-align:middle;">
   <strong>Muse Video</strong> and
   <img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/DeepMind_new_logo.svg" height="12" style="vertical-align:middle;">
@@ -141,8 +141,8 @@ This is a re-implementation of our work "PhyGDPO: Physics-Aware Groupwise Direct
 ### News
 
 - **2026.08.31 :** The code, data, and models of PhyGDPO are now fully open-sourced. Welcome to use them and share your feedback! 🚀
-- **2026.04.10 :** Our PhyGDPO algorithm was applied to the post-training of <img src="https://cdn.simpleicons.org/meta/0866FF" height="14" width="22" style="vertical-align:middle;"> **Muse Video**.
-- **2026.01.25 :** Our PhyGDPO algorithm was applied to the post-training of <img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/DeepMind_new_logo.svg" height="14" style="vertical-align:middle;"> **Gemini Omni Flash**.
+- **2026.04.10 :** Our PhyGDPO algorithm was applied in the post-training of <img src="https://cdn.simpleicons.org/meta/0866FF" height="14" width="22" style="vertical-align:middle;"> **Muse Video**.
+- **2026.01.25 :** Our PhyGDPO algorithm was applied in the post-training of <img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/DeepMind_new_logo.svg" height="14" style="vertical-align:middle;"> **Gemini Omni Flash**.
 - **2026.01.04 :** Our paper is on [arXiv](https://arxiv.org/abs/2512.24551) now. 🚀
 - **2026.01.03 :** Our [project page](https://caiyuanhao1998.github.io/project/PhyGDPO/) has been built up. Feel free to check the video generation results on the project page.
 - **2025.09.18 :** Our algorithm was deployed in <img src="https://cdn.simpleicons.org/meta/0866FF" height="14" width="22" style="vertical-align:middle;"> **Meta's internal video generation framework (MovieGen)**.
