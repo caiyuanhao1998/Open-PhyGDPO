@@ -145,7 +145,7 @@ This is a re-implementation of our work "PhyGDPO: Physics-Aware Groupwise Direct
 - **2026.01.25 :** Our PhyGDPO algorithm was applied to the post-training of <img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/DeepMind_new_logo.svg" height="14" style="vertical-align:middle;"> **Gemini Omni Flash**.
 - **2026.01.04 :** Our paper is on [arXiv](https://arxiv.org/abs/2512.24551) now. 🚀
 - **2026.01.03 :** Our [project page](https://caiyuanhao1998.github.io/project/PhyGDPO/) has been built up. Feel free to check the video generation results on the project page.
-- **2025.09.18 :** Our PhyGDPO algorithm was deployed in <img src="https://cdn.simpleicons.org/meta/0866FF" height="14" width="22" style="vertical-align:middle;"> **Meta's internal video generation framework (MovieGen)**.
+- **2025.09.18 :** Our algorithm was deployed in <img src="https://cdn.simpleicons.org/meta/0866FF" height="14" width="22" style="vertical-align:middle;"> **Meta's internal video generation framework (MovieGen)**.
 
 
 &nbsp;
