@@ -13,6 +13,14 @@
 
 <h3>PhyGDPO: Physics-Aware Groupwise Direct Preference <br> Optimization for Physically Consistent Text-to-Video Generation</h3> 
 
+<p style="font-size: 8px;">
+  Applied to the post-training of
+  <img src="https://cdn.simpleicons.org/meta/0866FF" height="12" style="vertical-align:middle;">
+  <strong>Muse Video</strong> and
+  <img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/DeepMind_new_logo.svg" height="12" style="vertical-align:middle;">
+  <strong>Gemini Omni Flash</strong>
+</p>
+
 </div>
 
 &nbsp;
