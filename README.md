@@ -140,6 +140,8 @@ This is a re-implementation of our work "PhyGDPO: Physics-Aware Groupwise Direct
 
 ### News
 
+- **2026.11.07 :** New comparison videos with <img src="https://cdn.simpleicons.org/bytedance/00D1D1" height="14" style="vertical-align:middle;"> **Seedance** are now available on our [project page](https://caiyuanhao1998.github.io/project/PhyGDPO/) and [🤗 Hugging Face](https://huggingface.co/datasets/CaiYuanhao/PhyGDPO_demo/tree/main/Main_Comparison)! 🎬
+- **2026.11.07 :** New video results on <img src="https://www.google.com/s2/favicons?domain=hy-nomas.hy.tencent.com&sz=64" height="16" style="vertical-align:middle;"> **[Hy-Nomas](https://hy-nomas.hy.tencent.com/)**, Tencent's latest world model cites our work and demonstrates that **PhyGDPO can improve the physical consistency of world models**. 🌍
 - **2026.08.31 :** The code, data, and models of PhyGDPO are now fully open-sourced. Welcome to use them and share your feedback! 🚀
 - **2026.04.10 :** Our PhyGDPO algorithm was applied in the post-training of <img src="https://cdn.simpleicons.org/meta/0866FF" height="14" width="22" style="vertical-align:middle;"> **Muse Video**.
 - **2026.01.25 :** Our PhyGDPO algorithm was applied in the post-training of <img src="https://commons.wikimedia.org/wiki/Special:Redirect/file/DeepMind_new_logo.svg" height="14" style="vertical-align:middle;"> **Gemini Omni Flash**.
