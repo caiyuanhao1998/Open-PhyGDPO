@@ -1,8 +1,59 @@
 import math
 import random
+import re
 import torch
 import numpy as np
 from icecream import ic
+
+WORDS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+NUMBER = r"(?:[+-]?\d+(?:\.\d+)?|zero|one|two|three|four|five)"
+PREFIX = re.compile(r"\b(?:(final|overall)\s+)?(?:score|rating|answer|choice)\b\s*(?:(?:is|of)\s+|[:=]\s*)?", re.I)
+VALUE = re.compile(rf"\s*({NUMBER})\b(?:\s*(?:/|out of)\s*({NUMBER})\b)?", re.I)
+FRACTION = re.compile(rf"(?<![\w./-])({NUMBER})\s*(?:/|out of)\s*({NUMBER})\b", re.I)
+LEADING = re.compile(rf"^\s*({NUMBER})\b(?=\s*(?:$|[.,!:;)—–-]|\bbecause\b))", re.I)
+
+
+def parse_score(text, task="sa") -> int:
+    """Read an explicit rating, using the original evaluator's zero fallback."""
+    maximum = {"sa": 5, "pc": 5, "rule": 2}[task]
+    minimum = 0 if task == "rule" else 1
+    text = re.sub(r"[*\x60'\"]", "", text or "").strip()
+
+    def number(token):
+        return int(token) if re.fullmatch(r"[+-]?\d+", token) else WORDS.get(token.lower())
+
+    def value(match):
+        if match is None:
+            return 0
+        tail = text[match.end():]
+        if re.match(rf"\s*(?:or\s+|to\s+|[-–]\s*|/\s*){NUMBER}\b", tail, re.I) or re.match(r"\.\d", tail):
+            return 0
+        n = number(match[1])
+        if match.lastindex == 2 and number(match[2]) != maximum:
+            return 0
+        return n if n is not None and minimum <= n <= maximum else 0
+
+    markers = list(PREFIX.finditer(text))
+    final = [m for m in markers if m[1]]
+    if final:
+        return value(VALUE.match(text, final[-1].end()))
+    explicit = [VALUE.match(text, m.end()) for m in markers]
+    explicit = [m for m in explicit if m is not None]
+    if explicit:
+        return value(explicit[-1])
+    fractions = {value(m) for m in FRACTION.finditer(text)}
+    if fractions:
+        return fractions.pop() if len(fractions) == 1 else 0
+    return value(LEADING.match(text))
+
+
+def decoded_responses(outputs, inputs, tokenizer):
+    prompts = inputs["input_ids"].tolist() if "input_ids" in inputs else [None] * len(outputs)
+    for tokens, prompt in zip(outputs.tolist(), prompts, strict=True):
+        if prompt and tokens[:len(prompt)] == prompt:
+            tokens = tokens[len(prompt):]
+        yield tokenizer.decode(tokens, skip_special_tokens=True)
+
 
 def print_rank_0(message):
     """If distributed is initialized, print only on rank 0."""

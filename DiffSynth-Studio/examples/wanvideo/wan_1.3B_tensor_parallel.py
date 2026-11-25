@@ -13,7 +13,8 @@ from torch.distributed.tensor.parallel import (
 )
 from torch.distributed._tensor import Replicate, Shard
 from lightning.pytorch.strategies import ModelParallelStrategy
-from diffsynth import ModelManager, WanVideoPipeline, save_video
+from diffsynth import ModelManager, WanVideoPipeline
+from diffsynth.distributed.wan_video_outputs import generation_record, local_devices, publish
 from tqdm import tqdm
 
 # -----------------------------------------------------------------------------
@@ -46,6 +47,7 @@ class LitWan13B(pl.LightningModule):
 
     def __init__(self, model_dir):
         super().__init__()
+        self.model_dir = model_dir
 
         # ── 1. Load checkpoints (single shard for 1.3 B) ──────────────────────
         model_manager = ModelManager(device="cpu")
@@ -151,8 +153,9 @@ class LitWan13B(pl.LightningModule):
         out_path = task.pop("output_path")
         with torch.no_grad(), torch.inference_mode(False):
             video = self.pipe(**task)
-        if self.local_rank == 0:
-            save_video(video, out_path, fps=15, quality=5)
+        if self.global_rank == 0:
+            record = generation_record("1.3B", task, "native", directory=self.model_dir)
+            publish(video, out_path, record)
 
 
 # -----------------------------------------------------------------------------
@@ -195,7 +198,7 @@ if __name__ == "__main__":
     model = LitWan13B(model_dir=args.model_dir)
     trainer = pl.Trainer(
         accelerator="gpu",
-        devices=torch.cuda.device_count(),
+        devices=local_devices(),
         strategy=ModelParallelStrategy(),
     )
     trainer.test(model, dataloader)

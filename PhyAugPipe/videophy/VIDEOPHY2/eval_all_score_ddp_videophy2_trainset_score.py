@@ -11,6 +11,7 @@ from transformers.models.llama.tokenization_llama import LlamaTokenizer
 from mplug_owl_video.modeling_mplug_owl import MplugOwlForConditionalGeneration
 from mplug_owl_video.processing_mplug_owl import MplugOwlImageProcessor, MplugOwlProcessor
 from template import *  # PROMPT_SA, PROMPT_PHYSICS
+from utils import decoded_responses, parse_score
 from pdb import set_trace as stx
 import json
 
@@ -35,17 +36,6 @@ print(f"[slice {args.k}/{args.N}]  device = {device}")
 
 # ───────── 常量 ─────────
 generate_kwargs = dict(do_sample=False, top_k=1, temperature=1e-3, max_length=64)
-NUM_MAP = {"zero":0,"one":1,"two":2,"three":3,"four":4,"five":5,
-           "0":0,"1":1,"2":2,"3":3,"4":4,"5":5}
-
-def parse_score(txt: str) -> int:
-    txt = txt.lower().strip()
-    for k, v in NUM_MAP.items():
-        if k in txt:
-            return v
-    digits = "".join(c for c in txt if c.isdigit())
-    return int(digits) if digits and int(digits) in NUM_MAP.values() else 0
-
 def modify_keys(sd):
     new = defaultdict()
     pat = re.compile(r'.*language_model.*\.(q_proj|v_proj|k_proj|o_proj|gate_proj|down_proj|up_proj).weight')
@@ -133,9 +123,7 @@ def run_task(task: str):
             inp = {k: v.bfloat16() if v.dtype == torch.float else v for k, v in inp.items()}
             inp = {k: v.to(device) for k, v in inp.items()}
             outs = model.generate(**inp, **generate_kwargs)
-            scores.extend(
-                [parse_score(tokenizer.decode(o.tolist(), skip_special_tokens=True)) for o in outs]
-            )
+            scores.extend(parse_score(text, task) for text in decoded_responses(outs, inp, tokenizer))
     df[col] = scores
 
 # ---------- 推理 ----------

@@ -10,7 +10,9 @@ from torch.distributed.tensor.parallel import (
 )
 from torch.distributed._tensor import Replicate, Shard
 from lightning.pytorch.strategies import ModelParallelStrategy
-from diffsynth import ModelManager, WanVideoPipeline, save_video
+from diffsynth import ModelManager, WanVideoPipeline
+from diffsynth.distributed.wan_video import EXAMPLE_PROMPTS, NEGATIVE_PROMPT, WanVideoCheckpoint
+from diffsynth.distributed.wan_video_outputs import denoising_progress, generation_record, local_devices, publish
 from tqdm import tqdm
 import argparse
 
@@ -37,33 +39,23 @@ class ToyDataset(torch.utils.data.Dataset):
 # -----------------------------------------------------------------------------
 
 class LitWan(pl.LightningModule):
-    """Tensor‑parallel version of Wan‑1.3B text‑to‑video pipeline (DiT backbone).
-    The TP plan is identical to the 14 B script – only the checkpoint paths and
-    model size differ.
-    """
+    """Tensor-parallel Wan2.1-T2V-14B with the PhyGDPO adapter."""
 
-    def __init__(self, lora_path):
+    def __init__(self, lora_path, model_dir="models/Wan-AI/Wan2.1-T2V-14B", report_progress=False):
         super().__init__()
+        self.adapter_path = lora_path
 
-        # ── 1. Load checkpoints (single shard for 1.3 B) ──────────────────────
+        self.model_dir = model_dir
+        self.report_progress = report_progress
+        checkpoint = WanVideoCheckpoint.from_directory(model_dir, "14B", lora_path)
         model_manager = ModelManager(device="cpu")
         model_manager.load_models(
-            [
-                [
-                    "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00001-of-00006.safetensors",
-                    "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00002-of-00006.safetensors",
-                    "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00003-of-00006.safetensors",
-                    "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00004-of-00006.safetensors",
-                    "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00005-of-00006.safetensors",
-                    "models/Wan-AI/Wan2.1-T2V-14B/diffusion_pytorch_model-00006-of-00006.safetensors",
-                ],
-                "models/Wan-AI/Wan2.1-T2V-14B/models_t5_umt5-xxl-enc-bf16.pth",
-                "models/Wan-AI/Wan2.1-T2V-14B/Wan2.1_VAE.pth",
-            ],
+            [list(map(str, checkpoint.dit)), str(checkpoint.text_encoder), str(checkpoint.vae)],
             torch_dtype=torch.bfloat16,
         )
 
-        model_manager.load_lora(lora_path, lora_alpha=1.0)
+        if lora_path is not None:
+            model_manager.load_lora(lora_path, lora_alpha=1.0)
 
         self.pipe = WanVideoPipeline.from_model_manager(
             model_manager, torch_dtype=torch.bfloat16, device="cuda"
@@ -144,12 +136,14 @@ class LitWan(pl.LightningModule):
 
     def test_step(self, batch):
         data = batch[0]
-        data["progress_bar_cmd"] = tqdm if self.local_rank == 0 else lambda x: x
+        progress = denoising_progress if self.report_progress else tqdm
+        data["progress_bar_cmd"] = progress if self.local_rank == 0 else lambda x: x
         output_path = data.pop("output_path")
         with torch.no_grad(), torch.inference_mode(False):
             video = self.pipe(**data)
-        if self.local_rank == 0:
-            save_video(video, output_path, fps=15, quality=5)
+        if self.global_rank == 0:
+            record = generation_record("14B", data, "native", directory=self.model_dir, adapter=self.adapter_path)
+            publish(video, output_path, record)
 
 
 # -----------------------------------------------------------------------------
@@ -161,28 +155,34 @@ class LitWan(pl.LightningModule):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lora_path", type=str, default="models/train/Wan2.1-T2V-14B_PhyGDPO/step-0001000.safetensors")
+    weights = parser.add_mutually_exclusive_group()
+    weights.add_argument("--base", action="store_true", help="Use the base model without an adapter")
+    weights.add_argument("--lora_path", type=str, default="models/train/Wan2.1-T2V-14B_PhyGDPO/step-0001000.safetensors")
+    parser.add_argument("--model_dir", default="models/Wan-AI/Wan2.1-T2V-14B")
+    parser.add_argument("--prompt", default=EXAMPLE_PROMPTS["14B"])
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--width", type=int, default=832)
+    parser.add_argument("--height", type=int, default=480)
+    parser.add_argument("--frames", type=int, default=81)
+    parser.add_argument("--num_inference_steps", type=int, default=50)
+    parser.add_argument("--output_path", default="gymnastics_14B_PhyGDPO.mp4")
+    parser.add_argument("--report-progress", action="store_true")
     args = parser.parse_args()
+    if args.base:
+        args.lora_path = None
 
-    tasks = [
-            {
-                "prompt": "A gymnast drops from the parallel bars and lands safely on the mat below.",
-                "negative_prompt": "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards",
-                "num_inference_steps": 50,
-                "seed": 0,
-                "tiled": False,
-                "output_path": "gymnastics_14B_PhyGDPO.mp4",
-            },
-    ]
+    tasks = [dict(prompt=args.prompt, negative_prompt=NEGATIVE_PROMPT, seed=args.seed,
+                  width=args.width, height=args.height, num_frames=args.frames,
+                  num_inference_steps=args.num_inference_steps, tiled=False, output_path=args.output_path)]
 
     dataloader = torch.utils.data.DataLoader(
         ToyDataset(tasks), collate_fn=lambda x: x
     )
 
-    model = LitWan(lora_path=args.lora_path)
+    model = LitWan(lora_path=args.lora_path, model_dir=args.model_dir, report_progress=args.report_progress)
     trainer = pl.Trainer(
         accelerator="gpu",
-        devices=torch.cuda.device_count(),
+        devices=local_devices(),
         strategy=ModelParallelStrategy(),
     )
     trainer.test(model, dataloader)

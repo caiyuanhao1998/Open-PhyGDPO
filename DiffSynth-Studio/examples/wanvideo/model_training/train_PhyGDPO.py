@@ -64,6 +64,12 @@ class WanTrainingModule(DiffusionTrainingModule):
         self.use_gradient_checkpointing_offload = use_gradient_checkpointing_offload
         self.extra_inputs = extra_inputs.split(",") if extra_inputs is not None else []
         self.dpo_beta = dpo_beta
+        self.alpha_min = alpha_min
+        self.k_alpha = k_alpha
+        self.b_alpha = b_alpha
+        self.k_gamma = k_gamma
+        self.b_gamma = b_gamma
+        self.lambda_gamma = lambda_gamma
 
         # lora on/off self-check
         try:
@@ -97,7 +103,7 @@ class WanTrainingModule(DiffusionTrainingModule):
         这里 l_* 可以是 “越小越好” 的 loss，也可以是 -log prob。
         """
         advantage = (l_model_w - l_ref_w) - (l_model_l - l_ref_l)
-        return -torch.log(torch.sigmoid(-self.dpo_beta * advantage)).mean()
+        return F.softplus(self.dpo_beta * advantage).mean()
 
 
     def dpo_loss_reward(self,
@@ -112,6 +118,9 @@ class WanTrainingModule(DiffusionTrainingModule):
 
         # ---------- advantage ----------
         advantage = (l_model_w - l_ref_w) - (l_model_l - l_ref_l)   # [B], same as yours
+
+        if sa_score is None or pc_score is None:
+            return F.softplus(self.dpo_beta * advantage).mean()
 
         # ---------- physics-aware α, γ from VLM (no advantage used here) ----------
         # violation v ∈ [0,1]: larger = worse (lower sa/pc)
@@ -242,6 +251,8 @@ class WanTrainingModule(DiffusionTrainingModule):
 
 if __name__ == "__main__":
     parser = wan_parser()
+    parser.add_argument("--dataset_pairs_manifest", help="Optional authoritative original T2V pairs.csv")
+    parser.add_argument("--dataset_pairs_root", help="Root of relative media paths in pairs.csv")
     args = parser.parse_args()
 
     # 1. 加载数据集

@@ -1,0 +1,15 @@
+# Python 3.11. Install a GPU-enabled torch 2.13.0 build matching the CUDA driver first.
+torch==2.13.0
+diffusers==0.35.2
+accelerate==1.14.0
+peft==0.20.0
+transformers==4.49.0
+safetensors==0.8.0
+huggingface-hub==0.36.2
+sentencepiece==0.2.2
+imageio-ffmpeg==0.6.0
+numpy==2.4.6
+Pillow==12.3.0
+ftfy==6.3.1
+beautifulsoup4==4.15.0
+requests==2.34.2

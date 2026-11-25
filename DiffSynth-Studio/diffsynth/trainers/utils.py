@@ -1,16 +1,22 @@
+import csv
+import math
+import pickle
+from pathlib import Path
 import imageio, os, torch, warnings, torchvision, argparse, json, re
+from safetensors import SafetensorError, safe_open
 from safetensors.torch import load_file
 from peft import LoraConfig, inject_adapter_in_model
 from PIL import Image
 import pandas as pd
 from tqdm import tqdm
 from accelerate import Accelerator
+from accelerate.utils import GradientAccumulationPlugin, broadcast, load as load_accelerate_file, send_to_device
 from pdb import set_trace as stx
 from typing import Callable, Optional
 import random
 from glob import glob
 from datetime import datetime
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, DistributedSampler
 from tqdm import tqdm
 from itertools import islice
 
@@ -1039,7 +1045,7 @@ class VideoDataset_Physics_DPO_Reward_Group(torch.utils.data.Dataset):
         video_file_extension=("mp4", "avi", "mov", "wmv", "mkv", "flv", "webm"),
         repeat=1,
         args=None,
-        extend=True
+        extend=True, pairs_manifest=None, pairs_root=None,
     ):
         if args is not None:
             base_path_positive = args.dataset_base_path_positive
@@ -1052,7 +1058,9 @@ class VideoDataset_Physics_DPO_Reward_Group(torch.utils.data.Dataset):
             data_file_keys = args.data_file_keys.split(",")
             repeat = args.dataset_repeat
             extend = args.extend
-        
+            pairs_manifest = getattr(args, "dataset_pairs_manifest", pairs_manifest)
+            pairs_root = getattr(args, "dataset_pairs_root", pairs_root)
+
         self.base_path_positive = base_path_positive
         self.base_path_negative = base_path_negative
         self.csv_path = csv_path
@@ -1069,95 +1077,137 @@ class VideoDataset_Physics_DPO_Reward_Group(torch.utils.data.Dataset):
         self.video_file_extension = video_file_extension
         self.repeat = repeat
         self.extend = extend
-        
-        # stx()
-        '''
-            base_path = 'data/example_video_dataset'
-            num_frames = 81
-            time_division_factor = 4
-            height_division_factor = 16, width_division_factor = 16
-            data_file_keys = ['image', 'video']
-            metadata_path = 'data/example_video_dataset/metadata.csv'
-        '''
 
-        # height 和 weight 是 crop 吗？
-        if height is not None and width is not None:
-            print("Height and width are fixed. Setting `dynamic_resolution` to False.")
-            self.dynamic_resolution = False
-        elif height is None and width is None:
-            print("Height and width are none. Setting `dynamic_resolution` to True.")
-            self.dynamic_resolution = True
-        
-        # metadata 可以根据 base_path 来生成
-        # 但是需要有同名的 video 和 txt 文件
-        if metadata_path is None:
-            print("No metadata. Trying to generate it.")
-            metadata = self.generate_metadata(base_path_positive)
-            '''
-               当有成对数据的时候, 比如 video1.mp4 和 video1.txt, 那么 metadata 如下:
-                       video                                             prompt
-                    0  video1.mp4  from sunset to night, a small town, light, hou...
-            '''
-            # stx()
-            print(f"{len(metadata)} lines in metadata.")
-            # 将 metadata 按行逐条转换为 list of dict
-            self.data = [metadata.iloc[i].to_dict() for i in range(len(metadata))]
-            '''
-                self.data - list of dict
-                self.data[0] - dict_keys(['video', 'prompt']) - {'video': 'video1.mp4', 'prompt': 'from sunset to night, a small town, light, house, river, cyh'}
-            '''
-            # stx()
-        elif metadata_path.endswith(".json"):
-            with open(metadata_path, "r") as f:
-                metadata = json.load(f)
-            self.data = metadata
-            '''
-                self.data - list of dict
-                self.data[0].keys() - dict_keys(['original', 'parse', 'reason', 'extended', 'physics_related_score', 'physics_label', 'vid'])
-            '''
-            # stx()
-        else:
-            seed_0_metadata_path = metadata_path
-            seed_1_metadata_path = metadata_path.replace("seed_0", "seed_1")
-            seed_3_metadata_path = metadata_path.replace("seed_0", "seed_3")
-            metadata_0 = pd.read_csv(seed_0_metadata_path)
-            metadata_1 = pd.read_csv(seed_1_metadata_path)
-            metadata_3 = pd.read_csv(seed_3_metadata_path)
-            data_0 = [metadata_0.iloc[i].to_dict() for i in range(len(metadata_0))]
-            data_1 = [metadata_1.iloc[i].to_dict() for i in range(len(metadata_1))]
-            data_3 = [metadata_3.iloc[i].to_dict() for i in range(len(metadata_3))]
-            self.data = {
-                "seed_0": data_0,
-                "seed_1": data_1,
-                "seed_3": data_3
-            }
-        
-        # stx()
-            
-    
-    def generate_metadata(self, folder):
-        video_list, prompt_list = [], []
-        file_set = set(os.listdir(folder))
-        for file_name in file_set:
-            if "." not in file_name:
-                continue
-            file_ext_name = file_name.split(".")[-1].lower()
-            file_base_name = file_name[:-len(file_ext_name)-1]
-            if file_ext_name not in self.image_file_extension and file_ext_name not in self.video_file_extension:
-                continue
-            prompt_file_name = file_base_name + ".txt"
-            if prompt_file_name not in file_set:
-                continue
-            with open(os.path.join(folder, prompt_file_name), "r", encoding="utf-8") as f:
-                prompt = f.read().strip()
-            video_list.append(file_name)
-            prompt_list.append(prompt)
-        # 创建一个空的 Pandas 表格
-        metadata = pd.DataFrame()
-        metadata["video"] = video_list
-        metadata["prompt"] = prompt_list
-        return metadata
-        
+        if (height is None) != (width is None):
+            raise ValueError("Specify both height and width, or neither")
+        self.dynamic_resolution = height is None
+        self.data = {}
+        if not base_path_positive or not base_path_negative:
+            raise ValueError("Specify the positive and negative video directories")
+        positive = Path(base_path_positive)
+        negative = Path(base_path_negative)
+        if not positive.is_dir() or not negative.is_dir():
+            raise FileNotFoundError(f"Missing video directories: {positive}, {negative}")
+
+        whitelist = None
+        if pairs_manifest:
+            root = Path(pairs_root) if pairs_root else positive.parent.parent
+            whitelist = {}
+            with open(pairs_manifest, newline="", encoding="utf-8") as source:
+                reader = csv.DictReader(source)
+                required = {"vid", "seed", "positive", "negative", "prompt_file"}
+                if not required.issubset(reader.fieldnames or ()):
+                    raise ValueError(f"Missing pair columns in {pairs_manifest}: {sorted(required)}")
+                for row in reader:
+                    vid, seed = row["vid"], "seed_" + (row["seed"] or "").removeprefix("seed_")
+                    if not vid or Path(vid).name != vid or seed not in ("seed_0", "seed_1", "seed_3"):
+                        raise ValueError(f"Invalid pair in {pairs_manifest}: {vid}, {seed}")
+                    if ((root / row["positive"]).resolve() != (positive / f"{vid}.mp4").resolve()
+                            or (root / row["negative"]).resolve() != (negative / seed / f"{vid}.mp4").resolve()):
+                        raise ValueError(f"Pair paths disagree with the dataset directories: {vid}, {seed}")
+                    group = whitelist.setdefault(seed, {})
+                    if vid in group:
+                        raise ValueError(f"Duplicate pair in {pairs_manifest}: {vid}, {seed}")
+                    group[vid] = root / row["prompt_file"]
+
+        seeds = ("seed_0", "seed_1", "seed_3")
+        tables = {}
+        for seed in seeds:
+            path = self._score_path(metadata_path, seed)
+            if path is not None and path.is_file():
+                tables[seed] = self._read_scores(path)
+        known_ids = dict.fromkeys(vid for table in tables.values() for vid in table)
+        for seed in seeds:
+            directory = negative / seed
+            scores = tables.get(seed, {})
+            if not directory.is_dir():
+                ids = ()
+            elif whitelist is not None:
+                ids = whitelist.get(seed, {})
+            elif seed in tables:
+                ids = scores
+            elif tables:
+                # A missing seed table must not expand an explicit scored selection.
+                ids = known_ids
+            else:
+                ids = sorted(path.stem for path in directory.glob("*.mp4"))
+            rows = []
+            scored = 0
+            for vid in ids:
+                if not (positive / f"{vid}.mp4").is_file() or not (directory / f"{vid}.mp4").is_file():
+                    continue
+                row = scores.get(vid, {}).copy()
+                caption = (row.get("caption") or "").strip()
+                if not caption:
+                    paths = ([whitelist[seed][vid]] if whitelist is not None else []) + [
+                        directory / f"{vid}.txt", positive / f"{vid}.txt",
+                    ]
+                    for path in paths:
+                        try:
+                            caption = " ".join(path.read_text(encoding="utf-8").splitlines()).strip()
+                        except (FileNotFoundError, UnicodeDecodeError):
+                            continue
+                        if caption:
+                            break
+                if not caption:
+                    continue
+                sa, pc = (self._rating(row.get(key)) for key in ("sa_score", "pc_score"))
+                if sa is None or pc is None:
+                    sa = pc = None
+                else:
+                    scored += 1
+                rows.append(dict(orig_idx=vid, caption=caption, sa_score=sa, pc_score=pc,
+                                 joint_score=self._finite_score(row.get("joint_score"))))
+            if rows:
+                self.data[seed] = rows
+            if os.environ.get("RANK", "0") == "0":
+                print(f"{seed}: {len(rows)} usable pairs ({scored} scored, {len(rows)-scored} unscored)")
+        if not self.data:
+            raise FileNotFoundError(f"No video pairs with captions found in {positive} and {negative}")
+        self.seeds = tuple(self.data)
+        self.sample_count = max(len(rows) for rows in self.data.values())
+
+    @staticmethod
+    def _read_scores(path):
+        with path.open(newline="", encoding="utf-8-sig") as source:
+            reader = csv.DictReader(source)
+            if "orig_idx" not in (reader.fieldnames or ()):
+                raise ValueError(f"Missing orig_idx column in {path}")
+            scores = {}
+            for row in reader:
+                vid = row["orig_idx"]
+                if not vid or Path(vid).name != vid or vid in scores:
+                    raise ValueError(f"Invalid or duplicate score ID {vid!r} in {path}")
+                scores[vid] = row
+        return scores
+
+    @staticmethod
+    def _finite_score(value):
+        try:
+            value = float(value)
+        except (ValueError, TypeError):
+            return None
+        return value if math.isfinite(value) else None
+
+    @classmethod
+    def _rating(cls, value):
+        score = cls._finite_score(value)
+        return score if score is not None and 1 <= score <= 5 else None
+
+    @staticmethod
+    def _score_path(metadata_path, seed):
+        if not metadata_path:
+            return None
+        path = Path(metadata_path)
+        if path.suffix.lower() != ".csv":
+            raise ValueError(f"Expected a score CSV: {path}")
+        parts = list(path.parts)
+        for i in reversed(range(len(parts))):
+            if re.search(r"seed_0(?![0-9])", parts[i]):
+                parts[i] = re.sub(r"seed_0(?![0-9])", seed, parts[i])
+                return Path(*parts)
+        return path if seed == "seed_0" else None
+
     # 先用大的 scale factor 放大，然后再 center crop
     def crop_and_resize(self, image, target_height, target_width):
         width, height = image.size
@@ -1169,8 +1219,8 @@ class VideoDataset_Physics_DPO_Reward_Group(torch.utils.data.Dataset):
         )
         image = torchvision.transforms.functional.center_crop(image, (target_height, target_width))
         return image
-    
-    
+
+
     def get_height_width(self, image):
         if self.dynamic_resolution:
             width, height = image.size
@@ -1182,8 +1232,8 @@ class VideoDataset_Physics_DPO_Reward_Group(torch.utils.data.Dataset):
         else:
             height, width = self.height, self.width
         return height, width
-    
-    
+
+
     def get_num_frames(self, reader):
         num_frames = self.num_frames
         if int(reader.count_frames()) < num_frames:
@@ -1193,38 +1243,34 @@ class VideoDataset_Physics_DPO_Reward_Group(torch.utils.data.Dataset):
             while num_frames > 1 and num_frames % self.time_division_factor != self.time_division_remainder:
                 num_frames -= 1
         return num_frames
-    
+
 
     def load_video(self, file_path):
-        reader = imageio.get_reader(file_path)
-        num_frames = self.get_num_frames(reader)
         frames = []
-        for frame_id in range(num_frames):
-            frame = reader.get_data(frame_id)
-            frame = Image.fromarray(frame)
-            frame = self.crop_and_resize(frame, *self.get_height_width(frame))
-            frames.append(frame)
-        reader.close()
+        with imageio.get_reader(file_path) as reader:
+            for frame_id in range(self.get_num_frames(reader)):
+                frame = Image.fromarray(reader.get_data(frame_id))
+                frames.append(self.crop_and_resize(frame, *self.get_height_width(frame)))
         return frames
-    
-    
+
+
     def load_image(self, file_path):
         image = Image.open(file_path).convert("RGB")
         image = self.crop_and_resize(image, *self.get_height_width(image))
         frames = [image]
         return frames
-    
-    
+
+
     def is_image(self, file_path):
         file_ext_name = file_path.split(".")[-1]
         return file_ext_name.lower() in self.image_file_extension
-    
-    
+
+
     def is_video(self, file_path):
         file_ext_name = file_path.split(".")[-1]
         return file_ext_name.lower() in self.video_file_extension
-    
-    
+
+
     def load_data(self, file_path):
         if self.is_image(file_path):
             return self.load_image(file_path)
@@ -1235,37 +1281,33 @@ class VideoDataset_Physics_DPO_Reward_Group(torch.utils.data.Dataset):
 
 
     def __getitem__(self, data_id):
-        try:
-            seed_list = ['seed_0', 'seed_1', 'seed_3']
-            seed = random.choice(seed_list)
-            # print(f"seed: {seed}")
-            data_cur = self.data[seed][data_id % len(self.data[seed])]
-            data = {}
-            video_data_positive_path = os.path.join(self.base_path_positive, f"{data_cur['orig_idx']}.mp4")
-            video_data_negative_path = os.path.join(self.base_path_negative, seed, f"{data_cur['orig_idx']}.mp4")
-            # print("video_data_positive_path: ", video_data_positive_path)
-            # print("video_data_negative_path: ", video_data_negative_path)
-            data["video_positive"] = self.load_data(video_data_positive_path)
-            data["video_negative"] = self.load_data(video_data_negative_path)
-            # print(data["video"])
-            data['sa_score'] = data_cur['sa_score']
-            data['pc_score'] = data_cur['pc_score']
-            data['joint_score'] = data_cur['joint_score']
+        last_error = None
+        for _ in range(10):
+            seed = random.choice(self.seeds)
+            row = self.data[seed][data_id % len(self.data[seed])]
+            filename = f"{row['orig_idx']}.mp4"
+            try:
+                positive = self.load_data(os.path.join(self.base_path_positive, filename))
+                negative = self.load_data(os.path.join(self.base_path_negative, seed, filename))
+                if not positive or not negative:
+                    raise ValueError(f"No video frames loaded for {filename} ({seed})")
+            except (OSError, EOFError, ValueError, RuntimeError, IndexError, StopIteration) as error:
+                last_error = error
+                data_id = random.randrange(self.sample_count)
+                continue
 
-            data["prompt"] = data_cur['caption']
-            if data.get("video_positive", None) is None or data.get("video_negative", None) is None or data.get("prompt", None) is None:
-                warnings.warn(f"cannot load file data[video_positive] or data[video_negative] or data[prompt].")
-                re_get_data_id = random.randint(0, len(self.data[seed]) * self.repeat - 1)
-                return self.__getitem__(re_get_data_id)
-            return data
-        except Exception as e:
-            print(f"Error in __getitem__: {e}")
-            re_get_data_id = random.randint(0, len(self.data[seed]) * self.repeat - 1)
-            return self.__getitem__(re_get_data_id)
-    
+            return {
+                "video_positive": positive,
+                "video_negative": negative,
+                "sa_score": row.get("sa_score"),
+                "pc_score": row.get("pc_score"),
+                "joint_score": row.get("joint_score"),
+                "prompt": row["caption"],
+            }
+        raise RuntimeError(f"Could not read a PhyGDPO training video pair after 10 attempts; last pair: {seed}/{filename}") from last_error
 
     def __len__(self):
-        return len(self.data['seed_0']) * self.repeat
+        return self.sample_count * self.repeat
 
 
 
@@ -1893,14 +1935,24 @@ class ModelLogger_Steps_Resume:
             .export_trainable_state_dict(state_dict, remove_prefix=self.remove_prefix_in_ckpt)
         )
         state_dict = self.state_dict_converter(state_dict)
-        accelerator.save(
-            state_dict,
-            os.path.join(self.output_path, f"{tag}.safetensors"),
-            safe_serialization=True,
-        )
-
-        # ---- 2. 保存 optimizer / scheduler / GradScaler / RNG 等完整状态 ----
-        accelerator.save_state(os.path.join(self.output_path, f"state-{tag}"))
+        state_dir = Path(self.output_path) / f"state-{tag}"
+        adapter = Path(self.output_path) / f"{tag}.safetensors"
+        temporary = adapter.with_name(f".{adapter.name}.partial")
+        pending = state_dir / ".incomplete"
+        if accelerator.is_main_process:
+            state_dir.mkdir(parents=True, exist_ok=True)
+            pending.touch()
+        accelerator.wait_for_everyone()
+        accelerator.save(state_dict, str(temporary), safe_serialization=True)
+        accelerator.save_state(str(state_dir))
+        accelerator.wait_for_everyone()
+        if accelerator.is_main_process:
+            temporary.replace(adapter)
+            files = {str(path.relative_to(state_dir)): path.stat().st_size for path in state_dir.rglob("*")
+                     if path.is_file() and path.name not in (".incomplete", ".complete")}
+            pending.write_text(json.dumps({"adapter_bytes": adapter.stat().st_size, "files": files}))
+            pending.replace(state_dir / ".complete")
+        accelerator.wait_for_everyone()
 
 
 
@@ -1943,44 +1995,144 @@ def launch_data_process_task(model: DiffusionTrainingModule, dataset, output_pat
 
 
 
-def _resume_if_possible(
-    accelerator: Accelerator,
-    model: torch.nn.Module,
-    output_path: str,
-) -> int:
-    """
-    若 output_path 下有 step‑xxx.safetensors，则：
-        1. 加载权重到 `model`
-        2. accelerator.load_state(...) 恢复 optimizer/scheduler/RNG
-        3. 返回已经训练到的 global_step
-    否则返回 0。
-    """
-    ckpts = sorted(glob(os.path.join(output_path, "step-*.safetensors")))
-    if not ckpts:
-        return 0
+def _checkpoint_ready(state_dir, adapter, accelerator):
+    if not state_dir.is_dir() or (state_dir / ".incomplete").exists():
+        return False
+    marker = state_dir / ".complete"
+    if marker.is_file():
+        try:
+            record = json.loads(marker.read_text())
+            return (adapter.stat().st_size == record["adapter_bytes"]
+                    and bool(record["files"])
+                    and all((state_dir / name).stat().st_size == size
+                            for name, size in record["files"].items()))
+        except (OSError, ValueError, TypeError, KeyError):
+            return False
 
-    latest_ckpt = ckpts[-1]
-    global_step = int(re.search(r"step-(\d+)\.safetensors", latest_ckpt).group(1))
+    # Older runs did not write a completion marker. Accelerate writes per-rank RNG
+    # state last. Its ordinary single-device and DDP formats also have named states.
+    rng_files = [state_dir / f"random_states_{rank}.pkl" for rank in range(accelerator.num_processes)]
+    required = list(rng_files)
+    if accelerator.distributed_type.name in ("NO", "MULTI_CPU", "MULTI_GPU"):
+        if not any((state_dir / name).is_file() for name in ("model.safetensors", "pytorch_model.bin")):
+            return False
+        if accelerator._optimizers:
+            required.append(state_dir / "optimizer.bin")
+        if accelerator._schedulers:
+            required.append(state_dir / "scheduler.bin")
+    if not all(path.is_file() and path.stat().st_size for path in required):
+        return False
+    try:
+        # Accelerate tolerates a broken RNG file when restoring. A legacy
+        # checkpoint whose last write was interrupted must instead be skipped.
+        rng_keys = {"random_state", "numpy_random_seed", "torch_manual_seed"}
+        for path in rng_files:
+            if not rng_keys.issubset(load_accelerate_file(path, map_location="cpu")):
+                return False
+        with safe_open(adapter, framework="pt", device="cpu") as weights:
+            return bool(weights.keys())
+    except (OSError, EOFError, LookupError, RuntimeError, ValueError, TypeError, pickle.UnpicklingError, SafetensorError):
+        return False
 
-    # —— 加载权重（仅可训练层 & 自动补前缀）——
-    unwrap_model = accelerator.unwrap_model(model)
-    ckpt = load_file(latest_ckpt, device="cpu")
 
-    # 如果保存时去掉了 'pipe.dit.'，这里自动加回来
-    sample_key = next(iter(ckpt))
-    if not sample_key.startswith("pipe."):
-        prefix = "pipe.dit."          # ⇦ 和你 --remove_prefix_in_ckpt 保持一致
-        ckpt = {prefix + k: v for k, v in ckpt.items()}
-    unwrap_model.load_state_dict(ckpt, strict=False)
+def _load_training_state(accelerator, directories):
+    candidates = []
+    for directory in directories:
+        found = []
+        for adapter in directory.glob("step-*.safetensors"):
+            match = re.fullmatch(r"step-(\d+)\.safetensors", adapter.name)
+            if match:
+                found.append((int(match[1]), adapter))
+        candidates.extend(sorted(found, reverse=True))
+    last_error = None
+    for step, adapter in candidates:
+        state_dir = adapter.with_name(f"state-{adapter.stem}")
+        invalid = not _checkpoint_ready(state_dir, adapter, accelerator)
+        invalid_ranks = accelerator.reduce(torch.tensor(int(invalid), device=accelerator.device), reduction="sum")
+        if invalid_ranks.item():
+            accelerator.print(f"Skipping incomplete checkpoint {adapter.stem}")
+            continue
+        # The Accelerate state contains the model, optimizer, scheduler and RNG.
+        # Loading it also restores the adapter parameters from the same update.
+        failed = False
+        try:
+            accelerator.load_state(str(state_dir))
+        except (OSError, EOFError, LookupError, pickle.UnpicklingError, SafetensorError) as error:
+            last_error = error
+            failed = True
+        except RuntimeError as error:
+            if "PytorchStreamReader" not in str(error):
+                raise
+            last_error = error
+            failed = True
+        failures = accelerator.reduce(torch.tensor(int(failed), device=accelerator.device), reduction="sum")
+        if failures.item():
+            accelerator.print(f"Skipping unreadable checkpoint {adapter.stem}")
+            last_error = last_error or OSError("Checkpoint unreadable on another rank")
+            continue
+        accelerator.print(f"Loaded training state from {state_dir}")
+        return state_dir, step
+    if last_error is not None:
+        raise RuntimeError(f"No readable training checkpoint in {directories}") from last_error
+    return None, 0
 
-    # —— 加载完整训练状态 ——
-    state_dir = os.path.join(output_path, f"state-step-{global_step:07d}")
-    accelerator.load_state(state_dir)
 
-    accelerator.print(f"✅  Resumed from step {global_step}")
-    return global_step
+def _resume_if_possible(accelerator: Accelerator, model: torch.nn.Module, output_path: str) -> int:
+    return _load_training_state(accelerator, [Path(output_path)])[1]
 
 
+class _TrainingCursor:
+    """Recreate each rank's shuffle and resume at the next unconsumed sample."""
+
+    def __init__(self, accelerator, dataset, accumulation):
+        if not len(dataset):
+            raise ValueError("Cannot train on an empty dataset")
+        seed = torch.tensor(torch.initial_seed() % (2**63), device=accelerator.device)
+        self.sampler = DistributedSampler(dataset, num_replicas=accelerator.num_processes,
+                                          rank=accelerator.process_index, seed=int(broadcast(seed).item()))
+        self.layout = dict(dataset_size=len(dataset), world_size=accelerator.num_processes,
+                           gradient_accumulation_steps=accumulation)
+        self.batches = 0
+        self.updates = 0
+
+    def indices(self):
+        while True:
+            epoch, offset = divmod(self.batches, len(self.sampler))
+            self.sampler.set_epoch(epoch)
+            # Skip indices only. Decoding a skipped or prefetched item would consume augmentation RNG.
+            for index in islice(self.sampler, offset, None):
+                self.batches += 1
+                yield index
+
+    def save(self, models, weights, output_dir):
+        record = dict(layout=self.layout, sampler_seed=self.sampler.seed,
+                      batches_consumed=self.batches, optimizer_steps=self.updates)
+        (Path(output_dir) / "training_progress.json").write_text(json.dumps(record))
+
+    def restore(self, state_dir, tag_step, optimizer, accelerator):
+        progress = state_dir / "training_progress.json"
+        if progress.is_file():
+            saved = json.loads(progress.read_text())
+            if saved["layout"] != self.layout or saved["optimizer_steps"] != tag_step:
+                raise ValueError(f"Incompatible dataset size, GPU count, accumulation or step in {progress}")
+            self.sampler.seed = saved["sampler_seed"]
+            self.batches = saved["batches_consumed"]
+            self.updates = tag_step
+            return
+
+        # The original launcher numbered microbatches. AdamW records the actual update count.
+        counters = [int(state["step"]) for state in optimizer.state.values() if "step" in state]
+        if counters:
+            self.updates = max(counters)
+        elif (state_dir / ".complete").is_file():
+            self.updates = tag_step
+        else:
+            # Stateless optimizers: the original Accelerate loop flushed at every epoch end.
+            epochs, offset = divmod(tag_step, len(self.sampler))
+            accumulation = self.layout["gradient_accumulation_steps"]
+            self.updates = epochs * math.ceil(len(self.sampler) / accumulation) + offset // accumulation
+        accelerator.print(f"Legacy checkpoint {state_dir.name} has no saved shuffle. "
+                          f"Starting a new shuffle at optimizer update {self.updates}.")
 
 
 def launch_training_task_steps_resume(
@@ -1993,59 +2145,66 @@ def launch_training_task_steps_resume(
     gradient_accumulation_steps: int = 1,
     show_progress: bool = True,
 ):
-    # ----- DataLoader & Accelerator -----
-    dataloader = DataLoader(
-        dataset,
-        shuffle=True,
-        collate_fn=lambda batch: batch[0],  # 保持原逻辑
-    )
+    accumulation = GradientAccumulationPlugin(num_steps=gradient_accumulation_steps, sync_with_dataloader=False)
+    accelerator = Accelerator(gradient_accumulation_plugin=accumulation, step_scheduler_with_optimizer=False)
+    model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
+    cursor = _TrainingCursor(accelerator, dataset, gradient_accumulation_steps)
+    root = Path(model_logger.output_path)
+    # Old microbatch numbers can overlap new optimizer-step filenames. Keep both generations readable.
+    migrated = root / "optimizer-steps"
+    state_dir, tag_step = _load_training_state(accelerator, [migrated, root])
+    if state_dir is not None:
+        cursor.restore(state_dir, tag_step, optimizer, accelerator)
+        if state_dir.parent == migrated or cursor.updates != tag_step:
+            migrated.mkdir(exist_ok=True)
+            model_logger.output_path = str(migrated)
+        # Checkpoints have no pending gradients. A legacy microbatch counter may be mid-accumulation.
+        accelerator.step = 0
+    if accelerator.is_main_process:
+        accelerator.register_save_state_pre_hook(cursor.save)
+    accelerator.print(f"[Resume] Resumed global_step = {cursor.updates}")
 
-    accelerator = Accelerator(gradient_accumulation_steps=gradient_accumulation_steps)
-    model, optimizer, dataloader, scheduler = accelerator.prepare(
-        model, optimizer, dataloader, scheduler
-    )
-
-    # ----- Resume -----
-    global_step = _resume_if_possible(accelerator, model, model_logger.output_path)
-    accelerator.print(f"[Resume] Resumed global_step = {global_step}")
-
-    if global_step >= total_training_steps:
+    if cursor.updates >= total_training_steps:
         accelerator.print(
-            f"[Resume] Target total_steps={total_training_steps} already reached (global_step={global_step}). Nothing to do."
+            f"[Resume] Target total_steps={total_training_steps} already reached (global_step={cursor.updates}). Nothing to do."
         )
 
     # ----- Progress bar -----
     pbar = (
-        tqdm(total=total_training_steps, initial=global_step, dynamic_ncols=True)
+        tqdm(total=total_training_steps, initial=cursor.updates, dynamic_ncols=True)
         if (accelerator.is_local_main_process and show_progress)
         else None
     )
 
     # ----- Training Loop (step budget controlled) -----
-    while global_step < total_training_steps:
-        for data in dataloader:
-            if global_step >= total_training_steps:
-                break
-
-            with accelerator.accumulate(model):
-                optimizer.zero_grad(set_to_none=True)
-                loss = model(data)
-                accelerator.backward(loss)
-                optimizer.step()
-                scheduler.step()
-                global_step += 1
-                model_logger.on_step_end(accelerator, model, global_step, loss)
-
-            if pbar is not None:
-                pbar.update(1)
-                pbar.set_postfix_str(f"loss={loss.item():.4f}")
-
-        # dataloader will re-shuffle each epoch because shuffle=True
+    optimizer.zero_grad(set_to_none=True)
+    update_loss = torch.zeros((), device=accelerator.device)
+    indices = cursor.indices()
+    while cursor.updates < total_training_steps:
+        data = send_to_device(dataset[next(indices)], accelerator.device)
+        with accelerator.accumulate(model):
+            loss = model(data)
+            update_loss += loss.detach() / gradient_accumulation_steps
+            accelerator.backward(loss)
+            if not accelerator.sync_gradients:
+                continue
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+            if accelerator.optimizer_step_was_skipped:
+                update_loss.zero_()
+                continue
+            scheduler.step()
+        cursor.updates += 1
+        model_logger.on_step_end(accelerator, model, cursor.updates, update_loss)
+        if pbar is not None:
+            pbar.update(1)
+            pbar.set_postfix_str(f"loss={update_loss.item():.4f}")
+        update_loss.zero_()
 
     if pbar is not None:
         pbar.close()
 
-    accelerator.print(f"[Done] Finished at global_step={global_step}/{total_training_steps}.")
+    accelerator.print(f"[Done] Finished at global_step={cursor.updates}/{total_training_steps}.")
 
 
 

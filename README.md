@@ -141,6 +141,8 @@ This is a re-implementation of our work "PhyGDPO: Physics-Aware Groupwise Direct
 
 ### News
 
+- **2026.11.24 :** Our PhyGDPO demo is live on Hugging Face Spaces! Choose a sports scene or enter your own prompt. [🤗 Try the online demo](https://huggingface.co/spaces/CaiYuanhao/PhyGDPO)
+- **2026.11.24 :** PhyGDPO now supports **Image-to-Video Generation**. We successfully applied it to **Wan-2.1-Fast-14B** to generate sports videos from a starting frame and a text prompt. [Training guide](DiffSynth-Studio/examples/wanvideo/fast_i2v_training/README.md)
 - **2026.11.07 :** New comparison videos with <img src="https://cdn.simpleicons.org/bytedance/00D1D1" height="14" style="vertical-align:middle;"> **Seedance** are now on our [project page](https://caiyuanhao1998.github.io/project/PhyGDPO/) and [Hugging Face](https://huggingface.co/datasets/CaiYuanhao/PhyGDPO_demo/tree/main/Main_Comparison) 🎬
 - **2026.11.07 :** Tencent's latest video gen world model <img src="https://www.google.com/s2/favicons?domain=hy-nomas.hy.tencent.com&sz=64" height="16" style="vertical-align:middle;"> **[Hy-Nomas](https://hy-nomas.hy.tencent.com/)** cites our work and demonstrates that **PhyGDPO can improve the physical consistency of world models**. 🌍
 - **2026.08.31 :** The code, data, and models of PhyGDPO are now fully open-sourced. Welcome to use them and share your feedback! 🚀
@@ -155,12 +157,11 @@ This is a re-implementation of our work "PhyGDPO: Physics-Aware Groupwise Direct
 &nbsp;
 
 ## 1. Data Construction
-We explain how to construct the training data from the original T2V data in the folder [`PhyAugPipe`](https://github.com/caiyuanhao1998/PhyGDPO/tree/master/PhyAugPipe). Please enter this folder and refer to the `README.md` file for detailed instructions.
-
+To construct training pairs from scratch using the original text-to-video data, follow the [PhyAugPipe guide](PhyAugPipe/README.md). To use our released training pairs, skip this step and follow the download instructions in [DiffSynth-Studio](DiffSynth-Studio/) folder.
 &nbsp;
 
 ## 2. Model Training and Inference
-We use the Wan2.1-T2V-14B as the base model and post-train it with our PhyGDPO framework. Our code is developed based on the DiffSynth GitHub repository. Please enter the folder [`DiffSynth`](https://github.com/caiyuanhao1998/PhyGDPO/tree/master/DiffSynth-Studio) and refer to `README.md` for detailed instruction of model training and inference.
+We use the Wan2.1-T2V-14B as the base model and post-train it with our PhyGDPO framework. Our code is developed based on the DiffSynth GitHub repository. Please enter the [DiffSynth-Studio](DiffSynth-Studio/) folder and refer to its `README.md` for detailed instructions on model training and inference.
 
 &nbsp;
 

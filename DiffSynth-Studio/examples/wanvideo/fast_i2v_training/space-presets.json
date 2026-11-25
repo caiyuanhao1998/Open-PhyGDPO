@@ -1,0 +1,42 @@
+{
+  "revision": "ff1f0497f84df911e0f24ad7c99a58f24ddf5947",
+  "noise_sha256": "3d867723a0c65428b6746e5a7f0ee22a77ac91e0ac4c669ecd493e608210949d",
+  "scenes": {
+    "gymnastics-p1": {
+      "label": "Gymnastics · Scene 1",
+      "icon": "🤸🏻‍♀️",
+      "button_label": "Gymnastics-1",
+      "conditioning_sha256": "6791cc710a4ff2a06b727932226a98e1d08cb1cf2587910835e5157f593b96c6"
+    },
+    "gymnastics-p2": {
+      "label": "Gymnastics · Scene 2",
+      "icon": "🤸",
+      "button_label": "Gymnastics-2",
+      "conditioning_sha256": "f2e9f8473328f51af1f01bc156421d57fcdddcd36cc15669d625a71e82322d86"
+    },
+    "surfing-p2": {
+      "label": "Surfing · Scene 2",
+      "icon": "🏄",
+      "button_label": "Surfing",
+      "conditioning_sha256": "721b857f9408b89f587dd1831dbfc2c96f816119efb713da21a4ca08065ccf89"
+    },
+    "american-football-p4": {
+      "label": "American football · Scene 4",
+      "icon": "🏈",
+      "button_label": "American football",
+      "conditioning_sha256": "6d39fc1e0ba271cb3e8839e6f5bfc20099897ac96efee0d1918ce10718f583ab"
+    },
+    "motorcycling-p1": {
+      "label": "Motorcycling · Scene 1",
+      "icon": "🏍️",
+      "button_label": "Motorcycling",
+      "conditioning_sha256": "0df09fa01c6f06521b4733384f224ad05392908e44e5cefb4c547f4868cfc975"
+    },
+    "boxing-p4": {
+      "label": "Boxing · Scene 4",
+      "icon": "🥊",
+      "button_label": "Boxing",
+      "conditioning_sha256": "ab062af206dc725cad521473733ba7f654d3f5bccc24abfaa007f9f6133390e2"
+    }
+  }
+}

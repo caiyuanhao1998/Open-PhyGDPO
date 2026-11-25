@@ -4,7 +4,8 @@ from torch.distributed.tensor.parallel import ColwiseParallel, RowwiseParallel, 
 from torch.distributed._tensor import Replicate, Shard
 from torch.distributed.tensor.parallel import parallelize_module
 from lightning.pytorch.strategies import ModelParallelStrategy
-from diffsynth import ModelManager, WanVideoPipeline, save_video
+from diffsynth import ModelManager, WanVideoPipeline
+from diffsynth.distributed.wan_video_outputs import generation_record, local_devices, publish, skip_on_all_ranks
 from tqdm import tqdm
 from modelscope import snapshot_download
 import json
@@ -24,12 +25,6 @@ class ToyDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.tasks)
-
-# 只让 rank0 写入，不然多进程会同时写入一个文件，会报错
-
-
-def is_rank0():
-    return int(os.environ.get("RANK", "0")) == 0
 
 
 class LitModel(pl.LightningModule):
@@ -127,12 +122,13 @@ class LitModel(pl.LightningModule):
         data = batch[0]
         data["progress_bar_cmd"] = tqdm if self.local_rank == 0 else lambda x: x
         output_path = data.pop("output_path")
-        # 若视频不存在，则生成视频；若存在，则跳过
-        if not os.path.exists(output_path):
-            with torch.no_grad(), torch.inference_mode(False):
-                video = self.pipe(**data)
-            if self.local_rank == 0:
-                save_video(video, output_path, fps=15, quality=5)
+        record = generation_record("14B", data, "native") if self.global_rank == 0 else None
+        if skip_on_all_ranks(output_path, record, self.device):
+            return
+        with torch.no_grad(), torch.inference_mode(False):
+            video = self.pipe(**data)
+        if self.global_rank == 0:
+            publish(video, output_path, record, caption=True)
 
 
 if __name__ == "__main__":
@@ -159,7 +155,6 @@ if __name__ == "__main__":
     os.makedirs(output_dir, exist_ok=True)
 
     data_dict_list = []
-    prompt_id = args.bias
     if args.reverse:
         prompts = prompts[args.bias:][::-1]
     else:
@@ -174,18 +169,11 @@ if __name__ == "__main__":
             "tiled": False,
             "output_path": f"{output_dir}/{prompt['vid']}.mp4",
         })
-        # write down the prompt
-        # stx()
-        if is_rank0():
-            with open(f"{output_dir}/{prompt['vid']}.txt", "w") as f:
-                f.write(cur_prompt)
-        prompt_id += 1
 
     dataloader = torch.utils.data.DataLoader(
         ToyDataset(data_dict_list),
         collate_fn=lambda x: x
     )
     model = LitModel()
-    trainer = pl.Trainer(accelerator="gpu", devices=torch.cuda.device_count(
-    ), strategy=ModelParallelStrategy())
+    trainer = pl.Trainer(accelerator="gpu", devices=local_devices(), strategy=ModelParallelStrategy(), use_distributed_sampler=False)
     trainer.test(model, dataloader)

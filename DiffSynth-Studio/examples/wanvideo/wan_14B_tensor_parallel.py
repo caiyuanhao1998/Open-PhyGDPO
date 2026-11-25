@@ -4,7 +4,8 @@ from torch.distributed.tensor.parallel import ColwiseParallel, RowwiseParallel, 
 from torch.distributed._tensor import Replicate, Shard
 from torch.distributed.tensor.parallel import parallelize_module
 from lightning.pytorch.strategies import ModelParallelStrategy
-from diffsynth import ModelManager, WanVideoPipeline, save_video
+from diffsynth import ModelManager, WanVideoPipeline
+from diffsynth.distributed.wan_video_outputs import generation_record, local_devices, publish
 from tqdm import tqdm
 from modelscope import snapshot_download
 
@@ -117,8 +118,9 @@ class LitModel(pl.LightningModule):
         output_path = data.pop("output_path")
         with torch.no_grad(), torch.inference_mode(False):
             video = self.pipe(**data)
-        if self.local_rank == 0:
-            save_video(video, output_path, fps=15, quality=5)
+        if self.global_rank == 0:
+            record = generation_record("14B", data, "native")
+            publish(video, output_path, record)
 
 
 if __name__ == "__main__":
@@ -137,6 +139,5 @@ if __name__ == "__main__":
         collate_fn=lambda x: x
     )
     model = LitModel()
-    trainer = pl.Trainer(accelerator="gpu", devices=torch.cuda.device_count(
-    ), strategy=ModelParallelStrategy())
+    trainer = pl.Trainer(accelerator="gpu", devices=local_devices(), strategy=ModelParallelStrategy())
     trainer.test(model, dataloader)

@@ -1,32 +1,35 @@
-import os
 import re
-import csv
-import json
 import argparse
+import os
 from collections import defaultdict
+from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import torch
+import torch.distributed as dist
 from tqdm import tqdm
 
 from peft import LoraConfig, get_peft_model
 from transformers.models.llama.tokenization_llama import LlamaTokenizer
 from mplug_owl_video.modeling_mplug_owl import MplugOwlForConditionalGeneration
 from mplug_owl_video.processing_mplug_owl import MplugOwlImageProcessor, MplugOwlProcessor
-from template import *
+from template import PROMPT_SA, PROMPT_PHYSICS, PROMPT_RULE
+from utils import decoded_responses, parse_score
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--input_csv', type = str, required = True, help = 'csv')
-parser.add_argument('--task', type = str, default='sa', choices=['sa', 'pc', 'rule'], help='task')
+parser.add_argument('--task', type=str, default='sa', choices=['sa', 'pc', 'rule', 'joint'], help='task')
 parser.add_argument('--checkpoint', type = str, required = True, help = 'checkpoint')
 parser.add_argument('--lora_checkpoint', default = None, type = str, help = 'lora trained ckpt')
 parser.add_argument('--batch_size', type = int, default = 1)
 parser.add_argument('--num_frames', type = int, default = 32)
 parser.add_argument('--output_csv', type = str, required = True, help = 'csv')
+parser.add_argument('--task_output_dir', type=Path, help='Also save the individual SA and PC CSVs in joint mode')
 
 args = parser.parse_args()
+if args.batch_size < 1:
+    parser.error('--batch_size must be positive')
 
 generate_kwargs = {
     'do_sample': False,
@@ -35,44 +38,28 @@ generate_kwargs = {
     'max_length': 256,
 }
 
-def inference(args, model, df, processor, tokenizer):
-    num_map = {
-        "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-        "0": 0, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5
-    }
-    
+def inference(args, model, df, processor, tokenizer, task):
+    scores = []
     with torch.no_grad():
-        for i,row in tqdm(df.iterrows()):
-            videopaths = [row['videopath']]
-            if args.task == 'sa':
-                prompts = [PROMPT_SA.format(caption=row['caption'])] 
-            elif args.task == 'pc':
-                prompts = [PROMPT_PHYSICS]
+        for start in tqdm(range(0, len(df), args.batch_size), desc=task.upper()):
+            batch = df.iloc[start : start + args.batch_size]
+            if task == 'sa':
+                prompts = [PROMPT_SA.format(caption=caption) for caption in batch['caption']]
+            elif task == 'pc':
+                prompts = [PROMPT_PHYSICS] * len(batch)
             else:
-                prompts = [PROMPT_RULE.format(rule=row['rule'])]
-            inputs = processor(text=prompts, videos=videopaths, num_frames=args.num_frames, return_tensors='pt')
+                prompts = [PROMPT_RULE.format(rule=rule) for rule in batch['rule']]
+            inputs = processor(
+                text=prompts, videos=batch['videopath'].tolist(),
+                num_frames=args.num_frames, return_tensors='pt',
+            )
             inputs = {k: v.bfloat16() if v.dtype == torch.float else v for k, v in inputs.items()}
             inputs = {k: v.to(model.device) for k, v in inputs.items()}
-            res = model.generate(**inputs, **generate_kwargs)
-            output = tokenizer.decode(res.tolist()[0], skip_special_tokens=True)
-            output_lower = output.lower().strip()
-            
-            print(output_lower)
-            score = None
-            for key, val in num_map.items():
-                if key in output_lower:
-                    score = val
-                    break
-            
-            if score is None:
-                # Optionally, try to extract a digit with a simple filter.
-                digits = ''.join([c for c in output_lower if c.isdigit()])
-                score = int(digits) if digits and int(digits) in num_map.values() else 0
-                print(f"Warning: Could not parse output '{output}'. Defaulting to {score}.")
-            
-            # Set the parsed score as an integer in the dataframe.
-            df.at[i, "score"] = score
-    return df
+            outputs = model.generate(**inputs, **generate_kwargs)
+            for output in decoded_responses(outputs, inputs, tokenizer):
+                print(output.lower().strip())
+                scores.append(parse_score(output, task))
+    return scores
 
 
 def modify_keys(state_dict):
@@ -89,17 +76,8 @@ def modify_keys(state_dict):
 
     return new_state_dict
 
-def main():
-
+def load_model(device):
     checkpoint = args.checkpoint
-
-    # Processors
-    tokenizer = LlamaTokenizer.from_pretrained(checkpoint)
-    image_processor = MplugOwlImageProcessor.from_pretrained(checkpoint)
-    processor = MplugOwlProcessor(image_processor, tokenizer)
-
-    df = pd.read_csv(args.input_csv)
-    # df = df.iloc[:20]
 
     tokenizer = LlamaTokenizer.from_pretrained(checkpoint)
     image_processor = MplugOwlImageProcessor.from_pretrained(checkpoint)
@@ -133,10 +111,57 @@ def main():
             ckpt = modify_keys(ckpt)
             model.load_state_dict(ckpt)
         print("LOADED")
-    model = model.to("cuda").to(torch.bfloat16)
-    
-    out = inference(args, model, df, processor, tokenizer)
-    out.to_csv(args.output_csv)
+    return model.to(device=device, dtype=torch.bfloat16), processor, tokenizer
+
+
+def score_rows(df, device):
+    model, processor, tokenizer = (None, None, None) if df.empty else load_model(device)
+    if args.task == 'joint':
+        sa = inference(args, model, df, processor, tokenizer, 'sa')
+        pc = inference(args, model, df, processor, tokenizer, 'pc')
+        out = df.assign(sa_score=sa, pc_score=pc)
+        out['joint_score'] = ((out['sa_score'] >= 4) & (out['pc_score'] >= 4)).astype(int)
+        return out
+    return df.assign(score=inference(args, model, df, processor, tokenizer, args.task))
+
+
+def main():
+    local_rank = int(os.environ.get('LOCAL_RANK', '0'))
+    rank = int(os.environ.get('RANK', '0'))
+    world_size = int(os.environ.get('WORLD_SIZE', '1'))
+    device = torch.device('cuda', local_rank)
+    torch.cuda.set_device(device)
+
+    df = pd.read_csv(args.input_csv)
+    required_columns = {'videopath'}
+    if args.task in {'sa', 'joint'}:
+        required_columns.add('caption')
+    if args.task == 'rule':
+        required_columns.add('rule')
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        parser.error(f"{args.input_csv} is missing columns: {', '.join(sorted(missing_columns))}")
+
+    if world_size > 1:
+        dist.init_process_group('gloo')
+    try:
+        out = score_rows(df.iloc[rank::world_size], device)
+        if world_size > 1:
+            gathered = [None] * world_size if rank == 0 else None
+            dist.gather_object(out, gathered, dst=0)
+            if rank == 0:
+                out = pd.concat([part for part in gathered if not part.empty] or gathered[:1]).sort_index()
+    finally:
+        if dist.is_initialized():
+            dist.destroy_process_group()
+
+    if rank == 0:
+        if args.task == 'joint' and args.task_output_dir is not None:
+            args.task_output_dir.mkdir(parents=True, exist_ok=True)
+            df.assign(score=out['sa_score']).to_csv(args.task_output_dir / 'output_sa.csv')
+            df.assign(score=out['pc_score']).to_csv(args.task_output_dir / 'output_pc.csv')
+        Path(args.output_csv).parent.mkdir(parents=True, exist_ok=True)
+        out.to_csv(args.output_csv)
 
 if __name__  == "__main__":
     main()

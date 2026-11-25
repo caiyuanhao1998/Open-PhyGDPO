@@ -10,7 +10,8 @@ from torch.distributed.tensor.parallel import (
 )
 from torch.distributed._tensor import Replicate, Shard
 from lightning.pytorch.strategies import ModelParallelStrategy
-from diffsynth import ModelManager, WanVideoPipeline, save_video
+from diffsynth import ModelManager, WanVideoPipeline
+from diffsynth.distributed.wan_video_outputs import generation_record, local_devices, publish
 from tqdm import tqdm
 import argparse
 import os
@@ -45,6 +46,8 @@ class LitWan13B(pl.LightningModule):
 
     def __init__(self, model_dir, lora_path):
         super().__init__()
+        self.model_dir = model_dir
+        self.adapter_path = lora_path
 
         # ── 1. Load checkpoints (single shard for 1.3 B) ──────────────────────
         model_manager = ModelManager(device="cpu")
@@ -57,7 +60,8 @@ class LitWan13B(pl.LightningModule):
             torch_dtype=torch.bfloat16,
         )
 
-        model_manager.load_lora(lora_path, lora_alpha=1.0)
+        if lora_path is not None:
+            model_manager.load_lora(lora_path, lora_alpha=1.0)
 
         self.pipe = WanVideoPipeline.from_model_manager(
             model_manager, torch_dtype=torch.bfloat16, device="cuda"
@@ -152,8 +156,9 @@ class LitWan13B(pl.LightningModule):
         out_path = task.pop("output_path")
         with torch.no_grad(), torch.inference_mode(False):
             video = self.pipe(**task)
-        if self.local_rank == 0:
-            save_video(video, out_path, fps=15, quality=5)
+        if self.global_rank == 0:
+            record = generation_record("1.3B", task, "native", directory=self.model_dir, adapter=self.adapter_path)
+            publish(video, out_path, record)
 
 
 # -----------------------------------------------------------------------------
@@ -166,15 +171,23 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_dir", type=str, default="models/Wan-AI/Wan2.1-T2V-1.3B")
-    parser.add_argument("--lora_path", type=str, default="models/train/Wan2.1-T2V-1.3B_PhyGDPO/epoch-0.safetensors")
+    weights = parser.add_mutually_exclusive_group()
+    weights.add_argument("--base", action="store_true", help="Use the base model without an adapter")
+    weights.add_argument("--lora_path", type=str, default="models/train/Wan2.1-T2V-1.3B_PhyGDPO/epoch-0.safetensors")
     parser.add_argument("--output_folder", type=str, default="./")
+    parser.add_argument("--output_path", help="Explicit output video path")
+    parser.add_argument("--width", type=int, default=832)
+    parser.add_argument("--height", type=int, default=480)
+    parser.add_argument("--frames", type=int, default=81)
     parser.add_argument("--num_inference_steps", type=int, default=50)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--prompt", default="A weightlifter successfully completes a snatch with a 25kg barbell, holding it momentarily overhead.")
     args = parser.parse_args()
+    if args.base:
+        args.lora_path = None
     os.makedirs(args.output_folder, exist_ok=True)
 
-    world_size = torch.cuda.device_count()
+    world_size = local_devices()
     if world_size < 1 or 1536 % world_size or 8960 % world_size:
         raise ValueError(
             f"Unsupported tensor-parallel size {world_size}; use 1, 2, 4, or 8 visible GPUs."
@@ -186,8 +199,11 @@ if __name__ == "__main__":
             "negative_prompt": "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards",
             "num_inference_steps": args.num_inference_steps,
             "seed": args.seed,
+            "width": args.width,
+            "height": args.height,
+            "num_frames": args.frames,
             "tiled": False,
-            "output_path": os.path.join(args.output_folder, "weightlifting_1.3B_PhyGDPO.mp4"),
+            "output_path": args.output_path or os.path.join(args.output_folder, "weightlifting_1.3B_PhyGDPO.mp4"),
         },
     ]
 
@@ -198,7 +214,7 @@ if __name__ == "__main__":
     model = LitWan13B(model_dir=args.model_dir, lora_path=args.lora_path)
     trainer = pl.Trainer(
         accelerator="gpu",
-        devices=torch.cuda.device_count(),
+        devices=local_devices(),
         strategy=ModelParallelStrategy(),
     )
     trainer.test(model, dataloader)

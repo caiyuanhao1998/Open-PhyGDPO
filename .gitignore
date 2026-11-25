@@ -10,7 +10,8 @@ PhyAugPipe/T2V_data/
 PhyAugPipe/DPO_data/
 DiffSynth-Studio/eval_results_all/
 DiffSynth-Studio/results/
-DiffSynth-Studio/models/train/
+DiffSynth-Studio/data/
+DiffSynth-Studio/runs/
 DiffSynth-Studio/models/Wan-AI/
 DiffSynth-Studio/gymnastic_14B.mp4
 DiffSynth-Studio/gymnastic_14B_PhyGDPO.mp4
