@@ -142,7 +142,7 @@ This is a re-implementation of our work "PhyGDPO: Physics-Aware Groupwise Direct
 ### News
 
 - **2026.11.24 :** We built an [online demo](https://huggingface.co/spaces/CaiYuanhao/PhyGDPO) on HuggingFace. Welcome to have a try 🤗
-- **2026.11.24 :** PhyGDPO now supports **Image-to-Video Generation**. We successfully applied it to **Wan-2.1-Fast-14B** to generate sports videos from a starting frame and a text prompt. [Training guide](DiffSynth-Studio/examples/wanvideo/fast_i2v_training/README.md)
+- **2026.11.24 :** PhyGDPO now supports **Image-to-Video Generation**. We successfully applied it to **Wan-2.1-Fast-14B** to generate sports videos from a starting frame and a text prompt.
 - **2026.11.07 :** New comparison videos with <img src="https://cdn.simpleicons.org/bytedance/00D1D1" height="14" style="vertical-align:middle;"> **Seedance** are now on our [project page](https://caiyuanhao1998.github.io/project/PhyGDPO/) and [Hugging Face](https://huggingface.co/datasets/CaiYuanhao/PhyGDPO_demo/tree/main/Main_Comparison) 🎬
 - **2026.11.07 :** Tencent's latest video gen world model <img src="https://www.google.com/s2/favicons?domain=hy-nomas.hy.tencent.com&sz=64" height="16" style="vertical-align:middle;"> **[Hy-Nomas](https://hy-nomas.hy.tencent.com/)** cites our work and demonstrates that **PhyGDPO can improve the physical consistency of world models**. 🌍
 - **2026.08.31 :** The code, data, and models of PhyGDPO are now fully open-sourced. Welcome to use them and share your feedback! 🚀
