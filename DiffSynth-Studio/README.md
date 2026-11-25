@@ -65,14 +65,6 @@ git lfs install
 git clone https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B models/Wan-AI/Wan2.1-T2V-1.3B
 git clone https://huggingface.co/Wan-AI/Wan2.1-T2V-14B models/Wan-AI/Wan2.1-T2V-14B
 git clone https://huggingface.co/CaiYuanhao/PhyGDPO models/pretrained
-
-# Fetch the comparison figure for the 1.3B model card.
-(
-  cd models/Wan-AI/Wan2.1-T2V-1.3B || exit 1
-  grep -Fxq 'assets/vben_1.3b_vs_sota.png filter=lfs' .git/info/attributes 2>/dev/null ||
-    printf '\n%s\n' 'assets/vben_1.3b_vs_sota.png filter=lfs' >> .git/info/attributes
-  git lfs pull --include=assets/vben_1.3b_vs_sota.png origin
-)
 ```
 
 The commands above place the weights in the following folders. For an existing installation, place the new model folder alongside the two T2V folders under `models/pretrained/`.
