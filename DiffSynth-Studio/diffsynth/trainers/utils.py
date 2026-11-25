@@ -10,7 +10,10 @@ from PIL import Image
 import pandas as pd
 from tqdm import tqdm
 from accelerate import Accelerator
-from accelerate.utils import GradientAccumulationPlugin, broadcast, load as load_accelerate_file, send_to_device
+from accelerate.utils import (
+    DistributedDataParallelKwargs, GradientAccumulationPlugin, broadcast, broadcast_object_list,
+    load as load_accelerate_file, send_to_device,
+)
 from pdb import set_trace as stx
 from typing import Callable, Optional
 import random
@@ -19,6 +22,9 @@ from datetime import datetime
 from torch.utils.data import DataLoader, DistributedSampler
 from tqdm import tqdm
 from itertools import islice
+from .lora_checkpoint import (
+    LORA_CHECKPOINT_FORMAT, LoRATrainingState, checkpoint_read_lock, file_sha256, staged_checkpoint,
+)
 
 
 
@@ -1872,12 +1878,18 @@ class ModelLogger_Steps_Resume:
         每隔多少 global step 保存一次。
     """
     def __init__(self, output_path: str, *, remove_prefix_in_ckpt=None,
-                 state_dict_converter=lambda x: x,
+                 state_dict_converter=None,
                  save_every_steps: int = 1_000,
-                 log_every_steps:  int = 100):
+                 log_every_steps: int = 100, lora_base_sources=None):
         self.output_path = output_path
+        # A custom inference converter may rename or cast parameters. Its
+        # exported file cannot double as a lossless training checkpoint.
+        self.lora_base_sources = lora_base_sources if state_dict_converter is None else None
+        self.lora_training_state = None
         self.remove_prefix_in_ckpt = remove_prefix_in_ckpt
-        self.state_dict_converter = state_dict_converter
+        self.state_dict_converter = (
+            state_dict_converter if state_dict_converter is not None else (lambda weights: weights)
+        )
         self.save_every_steps = save_every_steps
         self.log_every_steps  = log_every_steps
         os.makedirs(self.output_path, exist_ok=True)
@@ -1929,7 +1941,13 @@ class ModelLogger_Steps_Resume:
     def _save(self, accelerator: Accelerator, model: torch.nn.Module, tag: str):
         """保存权重 + 完整训练状态"""
         # ---- 1. 仅保存可训练权重（LoRA / adapter / full-finetune）----
-        state_dict = accelerator.get_state_dict(model)
+        if accelerator.is_fsdp2:
+            from torch.distributed.checkpoint.state_dict import StateDictOptions, get_model_state_dict
+
+            options = StateDictOptions(full_state_dict=True, cpu_offload=True, ignore_frozen_params=True)
+            state_dict = get_model_state_dict(model, options=options)
+        else:
+            state_dict = accelerator.get_state_dict(model)
         state_dict = (
             accelerator.unwrap_model(model)
             .export_trainable_state_dict(state_dict, remove_prefix=self.remove_prefix_in_ckpt)
@@ -1937,22 +1955,21 @@ class ModelLogger_Steps_Resume:
         state_dict = self.state_dict_converter(state_dict)
         state_dir = Path(self.output_path) / f"state-{tag}"
         adapter = Path(self.output_path) / f"{tag}.safetensors"
-        temporary = adapter.with_name(f".{adapter.name}.partial")
-        pending = state_dir / ".incomplete"
-        if accelerator.is_main_process:
-            state_dir.mkdir(parents=True, exist_ok=True)
-            pending.touch()
-        accelerator.wait_for_everyone()
-        accelerator.save(state_dict, str(temporary), safe_serialization=True)
-        accelerator.save_state(str(state_dir))
-        accelerator.wait_for_everyone()
-        if accelerator.is_main_process:
-            temporary.replace(adapter)
-            files = {str(path.relative_to(state_dir)): path.stat().st_size for path in state_dir.rglob("*")
-                     if path.is_file() and path.name not in (".incomplete", ".complete")}
-            pending.write_text(json.dumps({"adapter_bytes": adapter.stat().st_size, "files": files}))
-            pending.replace(state_dir / ".complete")
-        accelerator.wait_for_everyone()
+        with staged_checkpoint(accelerator, adapter, state_dir) as (weights_path, state_path):
+            accelerator.save(state_dict, str(weights_path), safe_serialization=True)
+            record = {}
+            if self.lora_training_state is None:
+                accelerator.save_state(str(state_path))
+            else:
+                record = self.lora_training_state.save(state_path)
+                if accelerator.is_main_process:
+                    record["adapter_sha256"] = file_sha256(weights_path)
+            accelerator.wait_for_everyone()
+            if accelerator.is_main_process:
+                files = {str(path.relative_to(state_path)): path.stat().st_size
+                         for path in state_path.rglob("*") if path.is_file()}
+                record.update(adapter_bytes=weights_path.stat().st_size, files=files)
+                (state_path / ".complete").write_text(json.dumps(record))
 
 
 
@@ -2035,15 +2052,23 @@ def _checkpoint_ready(state_dir, adapter, accelerator):
         return False
 
 
-def _load_training_state(accelerator, directories):
+def _load_training_state(accelerator, directories, lora_training_state=None):
+    with checkpoint_read_lock(accelerator, directories):
+        return _load_latest_checkpoint(accelerator, directories, lora_training_state)
+
+
+def _load_latest_checkpoint(accelerator, directories, lora_training_state):
+    data_parallel = accelerator.distributed_type.name in ("NO", "MULTI_CPU", "MULTI_GPU")
     candidates = []
-    for directory in directories:
-        found = []
-        for adapter in directory.glob("step-*.safetensors"):
-            match = re.fullmatch(r"step-(\d+)\.safetensors", adapter.name)
-            if match:
-                found.append((int(match[1]), adapter))
-        candidates.extend(sorted(found, reverse=True))
+    if accelerator.is_main_process:
+        for directory in directories:
+            found = []
+            for adapter in directory.glob("step-*.safetensors"):
+                match = re.fullmatch(r"step-(\d+)\.safetensors", adapter.name)
+                if match:
+                    found.append((int(match[1]), adapter))
+            candidates.extend(sorted(found, reverse=True))
+    candidates = broadcast_object_list([candidates])[0]
     last_error = None
     for step, adapter in candidates:
         state_dir = adapter.with_name(f"state-{adapter.stem}")
@@ -2052,11 +2077,23 @@ def _load_training_state(accelerator, directories):
         if invalid_ranks.item():
             accelerator.print(f"Skipping incomplete checkpoint {adapter.stem}")
             continue
-        # The Accelerate state contains the model, optimizer, scheduler and RNG.
-        # Loading it also restores the adapter parameters from the same update.
         failed = False
         try:
-            accelerator.load_state(str(state_dir))
+            marker = state_dir / ".complete"
+            record = json.loads(marker.read_text()) if marker.is_file() else {}
+            if "format" in record:
+                if record["format"] != LORA_CHECKPOINT_FORMAT or lora_training_state is None:
+                    raise ValueError(f"Unsupported checkpoint format for this training run: {record['format']}")
+                lora_training_state.restore(state_dir, adapter, record)
+            else:
+                if accelerator.is_fsdp2 and any((state_dir / f).is_file() for f in ("model.safetensors", "pytorch_model.bin")):
+                    raise ValueError(f"{state_dir} is a data-parallel checkpoint. Resume it with the data-parallel launcher.")
+                if data_parallel and (state_dir / "pytorch_model_fsdp_0" / ".metadata").is_file():
+                    raise ValueError(f"{state_dir} is a sharded FSDP checkpoint. Resume it with the FSDP launcher.")
+                # Legacy checkpoints contain the full model. Stage DDP restores on CPU.
+                accelerator.load_state(str(state_dir), **({"map_location": "cpu"} if data_parallel else {}))
+                if lora_training_state is not None:
+                    lora_training_state.base_sha256 = None
         except (OSError, EOFError, LookupError, pickle.UnpicklingError, SafetensorError) as error:
             last_error = error
             failed = True
@@ -2135,6 +2172,16 @@ class _TrainingCursor:
                           f"Starting a new shuffle at optimizer update {self.updates}.")
 
 
+def make_training_accelerator(gradient_accumulation_steps):
+    accumulation = GradientAccumulationPlugin(num_steps=gradient_accumulation_steps, sync_with_dataloader=False)
+    # DDP normally rebuilds buckets after its first backward. An explicitly deterministic
+    # run must reduce BF16 gradients in the same order before and after a process restart.
+    ddp = DistributedDataParallelKwargs(find_unused_parameters=torch.are_deterministic_algorithms_enabled())
+    return Accelerator(
+        gradient_accumulation_plugin=accumulation, step_scheduler_with_optimizer=False, kwargs_handlers=[ddp],
+    )
+
+
 def launch_training_task_steps_resume(
     dataset: torch.utils.data.Dataset,
     model: DiffusionTrainingModule,
@@ -2144,22 +2191,30 @@ def launch_training_task_steps_resume(
     total_training_steps: int = 100000,
     gradient_accumulation_steps: int = 1,
     show_progress: bool = True,
+    accelerator: Optional[Accelerator] = None,
 ):
-    accumulation = GradientAccumulationPlugin(num_steps=gradient_accumulation_steps, sync_with_dataloader=False)
-    accelerator = Accelerator(gradient_accumulation_plugin=accumulation, step_scheduler_with_optimizer=False)
+    if accelerator is None:
+        accelerator = make_training_accelerator(gradient_accumulation_steps)
     model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
     cursor = _TrainingCursor(accelerator, dataset, gradient_accumulation_steps)
+    if model_logger.lora_base_sources is not None and (
+        accelerator.is_fsdp2 or accelerator.distributed_type.name in ("NO", "MULTI_CPU", "MULTI_GPU")
+    ):
+        model_logger.lora_training_state = LoRATrainingState(
+            accelerator, model, optimizer, scheduler, cursor,
+            model_logger.lora_base_sources, model_logger.remove_prefix_in_ckpt,
+        )
     root = Path(model_logger.output_path)
     # Old microbatch numbers can overlap new optimizer-step filenames. Keep both generations readable.
     migrated = root / "optimizer-steps"
-    state_dir, tag_step = _load_training_state(accelerator, [migrated, root])
+    state_dir, tag_step = _load_training_state(accelerator, [migrated, root], model_logger.lora_training_state)
     if state_dir is not None:
         cursor.restore(state_dir, tag_step, optimizer, accelerator)
         if state_dir.parent == migrated or cursor.updates != tag_step:
             migrated.mkdir(exist_ok=True)
             model_logger.output_path = str(migrated)
-        # Checkpoints have no pending gradients. A legacy microbatch counter may be mid-accumulation.
-        accelerator.step = 0
+        # Modern checkpoints record completed microbatches. A legacy shuffle starts at zero.
+        accelerator.step = cursor.batches
     if accelerator.is_main_process:
         accelerator.register_save_state_pre_hook(cursor.save)
     accelerator.print(f"[Resume] Resumed global_step = {cursor.updates}")

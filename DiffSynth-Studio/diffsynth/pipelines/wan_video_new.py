@@ -4,6 +4,7 @@ from PIL import Image
 from einops import repeat, reduce
 from typing import Optional, Union
 from dataclasses import dataclass
+from functools import partial
 from modelscope import snapshot_download
 from einops import rearrange
 import numpy as np
@@ -1157,6 +1158,12 @@ class TemporalTiler_BCTHW:
 
 
 
+def _checkpoint_dit_blocks(blocks, x, context, t_mod, freqs):
+    for block in blocks:
+        x = torch.utils.checkpoint.checkpoint(block, x, context, t_mod, freqs, use_reentrant=False)
+    return x
+
+
 def model_fn_wan_video(
     dit: WanModel,
     motion_controller: WanMotionControllerModel = None,
@@ -1178,6 +1185,7 @@ def model_fn_wan_video(
     use_gradient_checkpointing: bool = False,
     use_gradient_checkpointing_offload: bool = False,
     control_camera_latents_input = None,
+    checkpoint_block_group: int = 1,
     **kwargs,
 ):
     if sliding_window_size is not None and sliding_window_stride is not None:
@@ -1269,7 +1277,15 @@ def model_fn_wan_video(
                 return module(*inputs)
             return custom_forward
         
-        for block_id, block in enumerate(dit.blocks):
+        blocks = dit.blocks
+        if (use_gradient_checkpointing_offload and checkpoint_block_group > 1
+                and vace_context is None and torch.is_grad_enabled()):
+            # Offload the group inputs. Backward recomputes one group's blocks at a time.
+            blocks = [
+                partial(_checkpoint_dit_blocks, dit.blocks[start:start + checkpoint_block_group])
+                for start in range(0, len(dit.blocks), checkpoint_block_group)
+            ]
+        for block_id, block in enumerate(blocks):
             if use_gradient_checkpointing_offload:
                 with torch.autograd.graph.save_on_cpu():
                     x = torch.utils.checkpoint.checkpoint(

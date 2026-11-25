@@ -305,6 +305,10 @@ bash train_14B.sh
 
 All three models save their checkpoints in model-specific folders under `models/train/`.
 
+For T2V LoRA training, each `step-*.safetensors` is the inference adapter. Keep it with its matching `state-step-*` folder to resume with the same base weights. Earlier full checkpoints can also be resumed.
+
+For Wan2.1-T2V-14B, the launcher enables FSDP2 with CPU offload when any of the eight GPUs has less than 40 GiB of VRAM. To resume an offloaded run on larger cards, use `PHYGDPO_TRAIN_CPU_OFFLOAD=1 bash train_14B.sh`.
+
 &nbsp;
 
 ## 4. Citation

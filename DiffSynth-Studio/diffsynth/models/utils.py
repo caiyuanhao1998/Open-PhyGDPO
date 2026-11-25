@@ -2,6 +2,7 @@ import torch, os
 from safetensors import safe_open
 from contextlib import contextmanager
 import hashlib
+import zipfile
 
 @contextmanager
 def init_weights_on_device(device = torch.device("meta"), include_buffers :bool = False):
@@ -80,7 +81,11 @@ def load_state_dict_from_safetensors(file_path, torch_dtype=None, device="cpu"):
 
 
 def load_state_dict_from_bin(file_path, torch_dtype=None, device="cpu"):
-    state_dict = torch.load(file_path, map_location=device, weights_only=True)
+    # Ranks loading the same CPU weights can share file-backed pages during initialization.
+    # Older torch.save files do not support memory mapping.
+    mmap = (str(device) == "cpu" and isinstance(file_path, (str, os.PathLike))
+            and zipfile.is_zipfile(file_path))
+    state_dict = torch.load(file_path, map_location=device, weights_only=True, mmap=mmap)
     if torch_dtype is not None:
         for i in state_dict:
             if isinstance(state_dict[i], torch.Tensor):

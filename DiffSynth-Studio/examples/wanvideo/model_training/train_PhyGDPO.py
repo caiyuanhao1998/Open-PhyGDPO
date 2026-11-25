@@ -1,6 +1,9 @@
 import torch, os, json
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
-from diffsynth.trainers.utils import DiffusionTrainingModule, VideoDataset_Physics_DPO_Reward_Group, ModelLogger_Steps_Resume, launch_training_task_steps_resume, wan_parser
+from diffsynth.trainers.utils import (
+    DiffusionTrainingModule, VideoDataset_Physics_DPO_Reward_Group, ModelLogger_Steps_Resume,
+    launch_training_task_steps_resume, make_training_accelerator, wan_parser,
+)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from pdb import set_trace as stx
 import copy
@@ -27,6 +30,7 @@ class WanTrainingModule(DiffusionTrainingModule):
         k_gamma=3.0,
         b_gamma=0.5,
         lambda_gamma=0.5,
+        accelerator=None,
     ):
         super().__init__()
         # Load models
@@ -38,6 +42,15 @@ class WanTrainingModule(DiffusionTrainingModule):
         if model_id_with_origin_paths is not None:
             model_id_with_origin_paths = model_id_with_origin_paths.split(",")
             model_configs += [ModelConfig(model_id=i.split(":")[0], origin_file_pattern=i.split(":")[1]) for i in model_id_with_origin_paths]
+        fsdp2 = accelerator is not None and accelerator.is_fsdp2
+        self.fsdp_device = accelerator.device if fsdp2 else None
+        self.checkpoint_block_group = 5 if fsdp2 else 1
+        empty_rank = (
+            fsdp2 and not accelerator.is_main_process and accelerator.state.fsdp_plugin.cpu_ram_efficient_loading
+        )
+        if empty_rank:
+            for config in model_configs:
+                config.offload_device = "meta"
         self.pipe = WanVideoPipeline.from_pretrained(torch_dtype=torch.bfloat16, device="cpu", model_configs=model_configs, skip_download=skip_download)
         
         # Reset training scheduler
@@ -58,6 +71,14 @@ class WanTrainingModule(DiffusionTrainingModule):
             setattr(self.pipe, lora_base_model, model)
             # 保存引用，后续开/关 LoRA 用
             self.lora_modules.append(getattr(self.pipe, lora_base_model))
+        if empty_rank:
+            # Accelerate matches the optimizer's original parameters by their storage addresses.
+            # Give trainable meta tensors distinct addresses before it distributes rank zero's weights.
+            for name, param in self.named_parameters():
+                if param.requires_grad and param.is_meta:
+                    parent, _, leaf = name.rpartition(".")
+                    storage = torch.nn.Parameter(torch.empty_like(param, device="cpu"))
+                    self.get_submodule(parent).register_parameter(leaf, storage)
             
         # Store other configs
         self.use_gradient_checkpointing = use_gradient_checkpointing
@@ -183,6 +204,7 @@ class WanTrainingModule(DiffusionTrainingModule):
             "rand_device": self.pipe.device,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
+            "checkpoint_block_group": self.checkpoint_block_group,
             "cfg_merge": False,
             "vace_scale": 1,
             "seed": seed_win,
@@ -198,6 +220,7 @@ class WanTrainingModule(DiffusionTrainingModule):
             "rand_device": self.pipe.device,
             "use_gradient_checkpointing": self.use_gradient_checkpointing,
             "use_gradient_checkpointing_offload": self.use_gradient_checkpointing_offload,
+            "checkpoint_block_group": self.checkpoint_block_group,
             "cfg_merge": False,
             "vace_scale": 1,
             "seed": seed_lose,
@@ -224,6 +247,13 @@ class WanTrainingModule(DiffusionTrainingModule):
 
     
     def forward(self, data):
+        if self.fsdp_device is not None:
+            from torch.distributed.fsdp import register_fsdp_forward_method
+
+            # FSDP has wrapped the model. The pipeline uses VAE.encode instead of VAE.forward.
+            register_fsdp_forward_method(self.pipe.vae, "encode")
+            self.pipe.device = self.fsdp_device
+            self.fsdp_device = None
         # type(data) = dict_keys(['video_positive', 'video_negative', 'prompt'])
         # data.keys() = dict_keys(['video_positive', 'video_negative', 'sa_score', 'pc_score', 'joint_score', 'prompt'])
         # stx()
@@ -254,6 +284,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_pairs_manifest", help="Optional authoritative original T2V pairs.csv")
     parser.add_argument("--dataset_pairs_root", help="Root of relative media paths in pairs.csv")
     args = parser.parse_args()
+    accelerator = make_training_accelerator(args.gradient_accumulation_steps)
 
     # 1. 加载数据集
     # dict_keys(['video', 'prompt'])  -->  dict_keys(['video_positive', 'video_negative', 'prompt'])
@@ -301,6 +332,7 @@ if __name__ == "__main__":
         k_gamma=args.k_gamma,
         b_gamma=args.b_gamma,
         lambda_gamma=args.lambda_gamma,
+        accelerator=accelerator,
     )
 
     # 3. 加载模型日志
@@ -308,7 +340,9 @@ if __name__ == "__main__":
         args.output_path,
         remove_prefix_in_ckpt=args.remove_prefix_in_ckpt,
         save_every_steps=args.save_every_steps,
-        log_every_steps=args.log_every_steps
+        log_every_steps=args.log_every_steps,
+        lora_base_sources=[s for s in (args.model_id_with_origin_paths, args.model_paths) if s]
+        if args.lora_base_model and not args.trainable_models else None,
     )
 
     # 4. 加载优化器
@@ -322,4 +356,5 @@ if __name__ == "__main__":
         dataset, model, model_logger, optimizer, scheduler,
         total_training_steps=args.total_training_steps,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
+        accelerator=accelerator,
     )

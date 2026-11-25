@@ -17,7 +17,31 @@ fi
 pair_args=()
 if [[ -n "$pairs_csv" ]]; then pair_args=(--dataset_pairs_manifest "$pairs_csv" --dataset_pairs_root "$data_dir"); fi
 
+cpu_offload=${PHYGDPO_TRAIN_CPU_OFFLOAD:-auto}
+if [[ "$cpu_offload" == auto ]]; then
+  # The original DiT, text encoder and VAE need about 38 GiB for one BF16 replica.
+  cpu_offload=$(python -c '
+import torch
+devices = range(min(8, torch.cuda.device_count()))
+print(int(any(torch.cuda.get_device_properties(i).total_memory < 40 * 1024**3 for i in devices)))
+')
+fi
+launch_args=()
+case "$cpu_offload" in
+  1|true)
+    echo "Training Wan2.1-T2V-14B with FSDP2 and CPU parameter offload."
+    launch_args=(--use_fsdp --fsdp_version 2 --fsdp_offload_params true
+      --fsdp_auto_wrap_policy TRANSFORMER_BASED_WRAP
+      --fsdp_transformer_layer_cls_to_wrap DiTBlock,T5SelfAttention,WanTextEncoder,WanVideoVAE
+      --fsdp_cpu_ram_efficient_loading true --fsdp_reshard_after_forward true
+      --fsdp_state_dict_type SHARDED_STATE_DICT)
+    ;;
+  0|false) ;;
+  *) echo "PHYGDPO_TRAIN_CPU_OFFLOAD must be auto, true/1 or false/0." >&2; exit 2 ;;
+esac
+
 accelerate launch \
+  "${launch_args[@]}" \
   --num_processes 8 \
   --num_machines 1 \
   --mixed_precision bf16 \
