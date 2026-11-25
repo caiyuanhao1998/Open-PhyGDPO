@@ -3,6 +3,7 @@ set -euo pipefail
 
 studio=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 python -m pip install \
+  -e "$studio" \
   -r "$studio/examples/wanvideo/fast_i2v_training/requirements.txt" \
   "torchvision==0.28.0" \
   "gradio==6.17.3" \

@@ -22,14 +22,14 @@ This part of code develops the [videophy2](https://videophy2.github.io/) codebas
 ### 1. Installation
 
 #### 1.1 Creating conda environment
-```python
-conda create -n videophy python=3.10
+```sh
+conda create -n videophy python=3.10 pip wheel -y
 conda activate videophy
 ```
 
 #### 1.2 Install dependencies
-```python
-python -m pip install -r requirements.txt
+```sh
+bash install_dependencies.sh
 ```
 
 ### 2. Score the generated videos as the losing cases for DPO training

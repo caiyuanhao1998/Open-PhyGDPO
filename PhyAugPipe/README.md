@@ -59,11 +59,12 @@ approximately 2 TiB, so check free disk space before starting. Please download t
 
 ```sh
 git lfs install
-git clone https://huggingface.co/datasets/Fudan-FUXI/VIDGEN-1M
+mkdir -p T2V_data/VIDGEN-1M_unzip
+git clone https://huggingface.co/datasets/Fudan-FUXI/VIDGEN-1M T2V_data/VIDGEN-1M
 ```
 
 
-Then unzip the videos, divide the `VidGen_1M_video_caption.json` into 8 equal parts as from `VidGen_1M_video_caption_0.json` to `VidGen_1M_video_caption_7.json`, origanize the files, and move them into the folder `T2V_data` as
+Extract the videos into `T2V_data/VIDGEN-1M_unzip/`. In `T2V_data/VIDGEN-1M/`, split `VidGen_1M_video_caption.json` into eight equal parts named `VidGen_1M_video_caption_0.json` through `VidGen_1M_video_caption_7.json`. The resulting directory layout is shown below.
 
 ```sh
 |--T2V_data
@@ -178,7 +179,7 @@ We understand using Gemini-pro costs a lot. To help your research without this e
 
 ## 4. Generating Videos as Losing Cases
 
-After physics data filtering, you can pick up a list of videos from the filtered data. Then use the pre-trained T2V model Wan2.1-T2V-14B to generate 3 videos with 3 random seeds for each text prompt in the pick-up set. For your convenience to quick start, we provide the generated losing cases in our huggingface website. Please feel free to download. If you want to generate the losing cases yourself, we also provide a data-parallel version code to do this in the folder [`PhyGDPO/DiffSynth-Studio`](https://github.com/caiyuanhao1998/PhyGDPO/tree/master/DiffSynth-Studio), please go to the folder and check the `README.md` file for detailed instruction. The generated DPO losing video cases are organized as
+After physics data filtering, you can pick up a list of videos from the filtered data. Then use the pre-trained T2V model Wan2.1-T2V-14B to generate 3 videos with 3 random seeds for each text prompt in the pick-up set. For your convenience to quick start, we provide the generated losing cases in our huggingface website. Please feel free to download. If you want to generate the losing cases yourself, we also provide a data-parallel version code to do this in the folder [`DiffSynth-Studio`](../DiffSynth-Studio/README.md), please go to the folder and check the `README.md` file for detailed instruction. The generated DPO losing video cases are organized as
 
 ```sh
 |--DPO_data
@@ -228,7 +229,7 @@ where the txt file is the original text prompt.
 
 
 ## 5. Physics-Guided Rewarding
-To evaluate the physics plausibility of the generated videos, we use the physics-aware VLM VideoCon-Physics to score the videos. Each video is evaluated with two socres: semantics adherence (SA) and physics commonsense (PC). We write a data parallel code to speed up this process, please enter the folder [`videophy`](https://github.com/caiyuanhao1998/PhyGDPO/tree/master/PhyAugPipe/videophy) for detailed instruction to install the environment and run the code.
+To evaluate the physics plausibility of the generated videos, we use the physics-aware VLM VideoCon-Physics to score the videos. Each video is evaluated with two socres: semantics adherence (SA) and physics commonsense (PC). We write a data parallel code to speed up this process, please enter the folder [`videophy`](videophy/README.md) for detailed instruction to install the environment and run the code.
 
 For your convenience, we also provide the processed csv files organized as
 ```sh

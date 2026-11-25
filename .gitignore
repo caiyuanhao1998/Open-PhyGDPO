@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 lightning_logs/
+*.egg-info/
 
 PhyAugPipe/collect_train_data/
 PhyAugPipe/models/
